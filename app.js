@@ -82,6 +82,7 @@ class FlipFile {
             this.files.set(fileId, {
                 file: file,
                 selectedFormat: null,
+                selectedPostProcess: 'None',
                 status: 'pending' // pending, converting, completed
             });
             this.addFileToUI(fileId, file);
@@ -93,6 +94,7 @@ class FlipFile {
     addFileToUI(fileId, file) {
         const filesList = document.getElementById('filesList');
         const formats = this.getAvailableFormats(file.type, file.name);
+        const postProcesses = this.getAvailablePostProcesses(file.type, file.name);
 
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -108,16 +110,22 @@ class FlipFile {
                 <option value="">Select format</option>
                 ${formats.map(format => `<option value="${format}">${format}</option>`).join('')}
             </select>
+            <select class="postprocess-select" data-file-id="${fileId}">
+                ${postProcesses.map(pp => `<option value="${pp}">${pp}</option>`).join('')}
+            </select>
             <button class="convert-btn" data-file-id="${fileId}" disabled>Convert</button>
+            <button class="clear-btn" data-file-id="${fileId}" title="Remove file">×</button>
         `;
 
         filesList.appendChild(fileItem);
 
         // Add event listeners
-        const select = fileItem.querySelector('.format-select');
+        const formatSelect = fileItem.querySelector('.format-select');
+        const postProcessSelect = fileItem.querySelector('.postprocess-select');
         const convertBtn = fileItem.querySelector('.convert-btn');
+        const clearBtn = fileItem.querySelector('.clear-btn');
 
-        select.addEventListener('change', (e) => {
+        formatSelect.addEventListener('change', (e) => {
             const selectedFormat = e.target.value;
             const fileData = this.files.get(fileId);
             fileData.selectedFormat = selectedFormat;
@@ -131,9 +139,47 @@ class FlipFile {
             }
         });
 
-        convertBtn.addEventListener('click', () => {
-            this.convertFile(fileId);
+        postProcessSelect.addEventListener('change', (e) => {
+            const fileData = this.files.get(fileId);
+            fileData.selectedPostProcess = e.target.value;
+
+            // Reset completed state when post-process changes
+            if (fileData.status === 'completed') {
+                fileData.status = 'pending';
+                fileItem.classList.remove('completed');
+                convertBtn.textContent = 'Convert';
+            }
         });
+
+        convertBtn.addEventListener('click', () => {
+            // Check if already converted - then download
+            const fileData = this.files.get(fileId);
+            if (fileData.status === 'completed' && fileData.convertedBlob) {
+                this.downloadFile(fileData.convertedBlob, fileData.convertedFilename);
+            } else {
+                this.convertFile(fileId, false); // false = don't auto-download
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            this.removeFile(fileId);
+        });
+    }
+
+    removeFile(fileId) {
+        // Remove from files map
+        this.files.delete(fileId);
+
+        // Remove from UI
+        const fileItem = document.getElementById(fileId);
+        if (fileItem) {
+            fileItem.remove();
+        }
+
+        // If no files left, show upload area
+        if (this.files.size === 0) {
+            this.toggleView('upload');
+        }
     }
 
     async convertFile(fileId, autoDownload = true) {
@@ -169,6 +215,11 @@ class FlipFile {
                 throw new Error('Unsupported file type');
             }
 
+            // Apply post-processing if selected
+            if (fileData.selectedPostProcess && fileData.selectedPostProcess !== 'None') {
+                result = await this.applyPostProcessing(result.blob, fileData.selectedPostProcess, mimeType, result.filename);
+            }
+
             // Store the converted result
             fileData.convertedBlob = result.blob;
             fileData.convertedFilename = result.filename;
@@ -176,9 +227,9 @@ class FlipFile {
             // Download the file if autoDownload is true
             if (autoDownload) {
                 this.downloadFile(result.blob, result.filename);
-                convertBtn.textContent = '✓ Downloaded';
+                convertBtn.textContent = 'Download';
             } else {
-                convertBtn.textContent = '✓ Converted';
+                convertBtn.textContent = 'Download';
             }
 
             // Update UI to completed state
@@ -406,6 +457,12 @@ class FlipFile {
                             blob = new Blob([mdText], { type: 'text/markdown' });
                             break;
 
+                        case 'LaTeX':
+                            // Convert HTML to LaTeX
+                            const latexText = this.htmlToLatex(htmlContent, file.name);
+                            blob = new Blob([latexText], { type: 'application/x-latex' });
+                            break;
+
                         default:
                             throw new Error(`Unsupported format: ${format}`);
                     }
@@ -431,14 +488,14 @@ class FlipFile {
     getAvailableFormats(mimeType, filename = '') {
         // Check for DOC/DOCX files by extension
         if (this.isDocumentFile(filename)) {
-            return ['TXT', 'HTML', 'MD'];
+            return ['TXT', 'HTML', 'MD', 'LaTeX'];
         }
 
         if (mimeType.startsWith('image/')) {
             return ['PNG', 'JPG', 'WebP', 'GIF', 'BMP', 'ICO'];
         }
         if (mimeType.startsWith('audio/')) {
-            return ['MP3', 'WAV', 'OGG', 'M4A'];
+            return ['MP3', 'WAV', 'OGG', 'M4A', 'AAC'];
         }
         if (mimeType.startsWith('video/')) {
             return ['MP4', 'WebM', 'GIF', 'AVI'];
@@ -452,6 +509,19 @@ class FlipFile {
 
         // Default options
         return ['TXT'];
+    }
+
+    getAvailablePostProcesses(mimeType, filename = '') {
+        if (mimeType.startsWith('image/')) {
+            return ['None', 'Squarify', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical', 'Invert Colors'];
+        }
+        if (this.isDocumentFile(filename) || mimeType.includes('pdf')) {
+            return ['None', 'Text Only', 'Remove Formatting'];
+        }
+        if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
+            return ['None'];
+        }
+        return ['None'];
     }
 
     getFileIcon(mimeType) {
@@ -477,15 +547,212 @@ class FlipFile {
             'WAV': 'audio/wav',
             'OGG': 'audio/ogg',
             'M4A': 'audio/mp4',
+            'AAC': 'audio/aac',
             'MP4': 'video/mp4',
             'WebM': 'video/webm',
             'AVI': 'video/x-msvideo',
             'TXT': 'text/plain',
             'JSON': 'application/json',
             'HTML': 'text/html',
-            'MD': 'text/markdown'
+            'MD': 'text/markdown',
+            'LaTeX': 'application/x-latex'
         };
         return mimeTypes[format] || 'application/octet-stream';
+    }
+
+    // POST-PROCESSING
+    async applyPostProcessing(blob, postProcess, mimeType, filename) {
+        if (mimeType.startsWith('image/')) {
+            return await this.applyImagePostProcessing(blob, postProcess, filename);
+        }
+        // Document post-processing would go here
+        return { blob, filename };
+    }
+
+    async applyImagePostProcessing(blob, postProcess, filename) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const url = URL.createObjectURL(blob);
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                let width = img.width;
+                let height = img.height;
+
+                // Apply different post-processes
+                switch (postProcess) {
+                    case 'Squarify':
+                        const size = Math.min(width, height);
+                        const offsetX = (width - size) / 2;
+                        const offsetY = (height - size) / 2;
+                        canvas.width = size;
+                        canvas.height = size;
+                        ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, size, size);
+                        break;
+
+                    case 'Grayscale':
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0);
+                        const imageData = ctx.getImageData(0, 0, width, height);
+                        const data = imageData.data;
+                        for (let i = 0; i < data.length; i += 4) {
+                            const gray = data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
+                            data[i] = data[i + 1] = data[i + 2] = gray;
+                        }
+                        ctx.putImageData(imageData, 0, 0);
+                        break;
+
+                    case 'Resize 50%':
+                        canvas.width = width * 0.5;
+                        canvas.height = height * 0.5;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        break;
+
+                    case 'Resize 200%':
+                        canvas.width = width * 2;
+                        canvas.height = height * 2;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        break;
+
+                    case 'Rotate 90°':
+                        canvas.width = height;
+                        canvas.height = width;
+                        ctx.translate(height, 0);
+                        ctx.rotate(Math.PI / 2);
+                        ctx.drawImage(img, 0, 0);
+                        break;
+
+                    case 'Rotate 180°':
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.translate(width, height);
+                        ctx.rotate(Math.PI);
+                        ctx.drawImage(img, 0, 0);
+                        break;
+
+                    case 'Flip Horizontal':
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.scale(-1, 1);
+                        ctx.drawImage(img, -width, 0);
+                        break;
+
+                    case 'Flip Vertical':
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.scale(1, -1);
+                        ctx.drawImage(img, 0, -height);
+                        break;
+
+                    case 'Invert Colors':
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0);
+                        const invertData = ctx.getImageData(0, 0, width, height);
+                        const invertPixels = invertData.data;
+                        for (let i = 0; i < invertPixels.length; i += 4) {
+                            invertPixels[i] = 255 - invertPixels[i];
+                            invertPixels[i + 1] = 255 - invertPixels[i + 1];
+                            invertPixels[i + 2] = 255 - invertPixels[i + 2];
+                        }
+                        ctx.putImageData(invertData, 0, 0);
+                        break;
+
+                    default:
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0);
+                }
+
+                canvas.toBlob((newBlob) => {
+                    URL.revokeObjectURL(url);
+                    if (newBlob) {
+                        resolve({ blob: newBlob, filename });
+                    } else {
+                        reject(new Error('Post-processing failed'));
+                    }
+                }, blob.type);
+            };
+
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('Failed to load image for post-processing'));
+            };
+
+            img.src = url;
+        });
+    }
+
+    // HTML to LaTeX conversion
+    htmlToLatex(html, title = 'Document') {
+        // Convert HTML to LaTeX
+        let latex = `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{hyperref}
+
+\\title{${this.escapeLatex(title)}}
+\\date{}
+
+\\begin{document}
+
+\\maketitle
+
+`;
+
+        // Convert HTML elements to LaTeX
+        let content = html
+            // Headings
+            .replace(/<h1>(.*?)<\/h1>/g, '\\section{$1}\n')
+            .replace(/<h2>(.*?)<\/h2>/g, '\\subsection{$1}\n')
+            .replace(/<h3>(.*?)<\/h3>/g, '\\subsubsection{$1}\n')
+            // Paragraphs
+            .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
+            // Lists
+            .replace(/<ul>/g, '\\begin{itemize}\n')
+            .replace(/<\/ul>/g, '\\end{itemize}\n')
+            .replace(/<ol>/g, '\\begin{enumerate}\n')
+            .replace(/<\/ol>/g, '\\end{enumerate}\n')
+            .replace(/<li>(.*?)<\/li>/g, '\\item $1\n')
+            // Text formatting
+            .replace(/<strong>(.*?)<\/strong>/g, '\\textbf{$1}')
+            .replace(/<b>(.*?)<\/b>/g, '\\textbf{$1}')
+            .replace(/<em>(.*?)<\/em>/g, '\\textit{$1}')
+            .replace(/<i>(.*?)<\/i>/g, '\\textit{$1}')
+            .replace(/<u>(.*?)<\/u>/g, '\\underline{$1}')
+            // Links
+            .replace(/<a href="(.*?)">(.*?)<\/a>/g, '\\href{$1}{$2}')
+            // Line breaks
+            .replace(/<br\s*\/?>/g, '\\\\\n')
+            // Remove remaining HTML tags
+            .replace(/<[^>]+>/g, '');
+
+        // Escape LaTeX special characters in content
+        content = this.escapeLatex(content);
+
+        latex += content;
+        latex += '\n\\end{document}';
+
+        return latex;
+    }
+
+    escapeLatex(text) {
+        // Don't escape if it already looks like LaTeX commands
+        if (text.includes('\\')) return text;
+
+        return text
+            .replace(/\\/g, '\\textbackslash{}')
+            .replace(/&/g, '\\&')
+            .replace(/%/g, '\\%')
+            .replace(/\$/g, '\\$')
+            .replace(/#/g, '\\#')
+            .replace(/_/g, '\\_')
+            .replace(/{/g, '\\{')
+            .replace(/}/g, '\\}')
+            .replace(/~/g, '\\textasciitilde{}')
+            .replace(/\^/g, '\\textasciicircum{}');
     }
 
     changeFileExtension(filename, newExt) {
