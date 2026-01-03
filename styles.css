@@ -356,34 +356,38 @@ main {
 /* Action Buttons */
 .action-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
     margin-top: 20px;
 }
 
-.convert-all-btn {
+.convert-all-btn,
+.convert-download-btn {
     padding: 16px;
     background: var(--primary);
     border: none;
     border-radius: 10px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--white);
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.convert-all-btn:hover {
+.convert-all-btn:hover,
+.convert-download-btn:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
     box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
 }
 
-.convert-all-btn:active {
+.convert-all-btn:active,
+.convert-download-btn:active {
     transform: translateY(0);
 }
 
-.convert-all-btn:disabled {
+.convert-all-btn:disabled,
+.convert-download-btn:disabled {
     background: var(--border);
     cursor: not-allowed;
     transform: none;
@@ -394,7 +398,7 @@ main {
     background: var(--bg);
     border: 2px solid var(--border);
     border-radius: 10px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text);
     cursor: pointer;

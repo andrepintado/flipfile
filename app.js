@@ -14,9 +14,11 @@ class FlipFile {
 
     setupEventListeners() {
         const uploadArea = document.getElementById('uploadArea');
+        const conversionPanel = document.getElementById('conversionPanel');
         const fileInput = document.getElementById('fileInput');
         const resetBtn = document.getElementById('resetBtn');
         const convertAllBtn = document.getElementById('convertAllBtn');
+        const convertDownloadBtn = document.getElementById('convertDownloadBtn');
 
         // Click to upload
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -28,7 +30,7 @@ class FlipFile {
             }
         });
 
-        // Drag and drop
+        // Drag and drop on upload area
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
@@ -46,11 +48,32 @@ class FlipFile {
             }
         });
 
+        // Drag and drop on conversion panel (when files are already present)
+        conversionPanel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            conversionPanel.style.opacity = '0.7';
+        });
+
+        conversionPanel.addEventListener('dragleave', () => {
+            conversionPanel.style.opacity = '1';
+        });
+
+        conversionPanel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            conversionPanel.style.opacity = '1';
+            if (e.dataTransfer.files.length > 0) {
+                this.handleFiles(Array.from(e.dataTransfer.files));
+            }
+        });
+
         // Reset button - add more files
         resetBtn.addEventListener('click', () => fileInput.click());
 
-        // Convert All button
-        convertAllBtn.addEventListener('click', () => this.convertAll());
+        // Convert All button (without download)
+        convertAllBtn.addEventListener('click', () => this.convertAll(false));
+
+        // Convert and Download All button
+        convertDownloadBtn.addEventListener('click', () => this.convertAll(true));
     }
 
     handleFiles(fileList) {
@@ -69,7 +92,7 @@ class FlipFile {
 
     addFileToUI(fileId, file) {
         const filesList = document.getElementById('filesList');
-        const formats = this.getAvailableFormats(file.type);
+        const formats = this.getAvailableFormats(file.type, file.name);
 
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -99,6 +122,13 @@ class FlipFile {
             const fileData = this.files.get(fileId);
             fileData.selectedFormat = selectedFormat;
             convertBtn.disabled = !selectedFormat;
+
+            // Reset completed state when format changes
+            if (fileData.status === 'completed') {
+                fileData.status = 'pending';
+                fileItem.classList.remove('completed');
+                convertBtn.textContent = 'Convert';
+            }
         });
 
         convertBtn.addEventListener('click', () => {
@@ -106,7 +136,7 @@ class FlipFile {
         });
     }
 
-    async convertFile(fileId) {
+    async convertFile(fileId, autoDownload = true) {
         const fileData = this.files.get(fileId);
         if (!fileData || !fileData.selectedFormat) return;
 
@@ -124,6 +154,7 @@ class FlipFile {
         try {
             let result;
             const mimeType = fileData.file.type;
+            const fileName = fileData.file.name;
             const targetFormat = fileData.selectedFormat;
 
             if (mimeType.startsWith('image/')) {
@@ -132,24 +163,30 @@ class FlipFile {
                 result = await this.convertMedia(fileData.file, targetFormat);
             } else if (mimeType.includes('text') || mimeType.includes('json')) {
                 result = await this.convertText(fileData.file, targetFormat);
+            } else if (this.isDocumentFile(fileName)) {
+                result = await this.convertDocument(fileData.file, targetFormat);
             } else {
                 throw new Error('Unsupported file type');
             }
 
-            // Download the file
-            this.downloadFile(result.blob, result.filename);
+            // Store the converted result
+            fileData.convertedBlob = result.blob;
+            fileData.convertedFilename = result.filename;
+
+            // Download the file if autoDownload is true
+            if (autoDownload) {
+                this.downloadFile(result.blob, result.filename);
+                convertBtn.textContent = '✓ Downloaded';
+            } else {
+                convertBtn.textContent = '✓ Converted';
+            }
 
             // Update UI to completed state
             fileData.status = 'completed';
             fileItem.classList.remove('converting');
             fileItem.classList.add('completed');
-            convertBtn.textContent = '✓ Downloaded';
             convertBtn.disabled = false;
-
-            // Allow re-conversion
-            convertBtn.addEventListener('click', () => {
-                this.convertFile(fileId);
-            }, { once: true });
+            select.disabled = false;
 
         } catch (error) {
             console.error('Conversion error:', error);
@@ -164,13 +201,30 @@ class FlipFile {
         }
     }
 
-    async convertAll() {
+    async convertAll(autoDownload = true) {
         const pendingFiles = Array.from(this.files.entries())
             .filter(([id, data]) => data.selectedFormat && data.status !== 'converting');
 
         for (const [fileId, _] of pendingFiles) {
-            await this.convertFile(fileId);
+            await this.convertFile(fileId, autoDownload);
         }
+
+        // If not auto-downloading, offer to download all at once
+        if (!autoDownload && pendingFiles.length > 0) {
+            const downloadAll = confirm(`${pendingFiles.length} file(s) converted. Download all now?`);
+            if (downloadAll) {
+                this.downloadAllConverted();
+            }
+        }
+    }
+
+    downloadAllConverted() {
+        const convertedFiles = Array.from(this.files.values())
+            .filter(data => data.status === 'completed' && data.convertedBlob);
+
+        convertedFiles.forEach(data => {
+            this.downloadFile(data.convertedBlob, data.convertedFilename);
+        });
     }
 
     // IMAGE CONVERSION
@@ -294,8 +348,92 @@ class FlipFile {
         });
     }
 
+    // DOCUMENT CONVERSION (DOC/DOCX using Mammoth.js)
+    async convertDocument(file, format) {
+        if (!window.mammoth) {
+            throw new Error('Document conversion library not loaded');
+        }
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+
+                    // Convert DOCX to HTML using mammoth
+                    const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                    const htmlContent = result.value;
+
+                    let blob;
+                    const filename = this.changeFileExtension(file.name, format);
+
+                    switch (format) {
+                        case 'HTML':
+                            const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${file.name}</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+        p { margin-bottom: 1em; }
+    </style>
+</head>
+<body>
+    ${htmlContent}
+</body>
+</html>`;
+                            blob = new Blob([fullHtml], { type: 'text/html' });
+                            break;
+
+                        case 'TXT':
+                            const textResult = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                            const textContent = textResult.value;
+                            blob = new Blob([textContent], { type: 'text/plain' });
+                            break;
+
+                        case 'MD':
+                            // Convert HTML to simple markdown
+                            const mdText = htmlContent
+                                .replace(/<h1>(.*?)<\/h1>/g, '# $1\n\n')
+                                .replace(/<h2>(.*?)<\/h2>/g, '## $1\n\n')
+                                .replace(/<h3>(.*?)<\/h3>/g, '### $1\n\n')
+                                .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
+                                .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+                                .replace(/<em>(.*?)<\/em>/g, '*$1*')
+                                .replace(/<[^>]+>/g, ''); // Remove remaining HTML tags
+                            blob = new Blob([mdText], { type: 'text/markdown' });
+                            break;
+
+                        default:
+                            throw new Error(`Unsupported format: ${format}`);
+                    }
+
+                    resolve({ blob, filename });
+
+                } catch (error) {
+                    reject(new Error(`Document conversion failed: ${error.message}`));
+                }
+            };
+
+            reader.onerror = () => reject(new Error('Failed to read document file'));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    isDocumentFile(filename) {
+        const ext = filename.toLowerCase().split('.').pop();
+        return ['doc', 'docx'].includes(ext);
+    }
+
     // UTILITY FUNCTIONS
-    getAvailableFormats(mimeType) {
+    getAvailableFormats(mimeType, filename = '') {
+        // Check for DOC/DOCX files by extension
+        if (this.isDocumentFile(filename)) {
+            return ['TXT', 'HTML', 'MD'];
+        }
+
         if (mimeType.startsWith('image/')) {
             return ['PNG', 'JPG', 'WebP', 'GIF', 'BMP', 'ICO'];
         }
