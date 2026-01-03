@@ -32,14 +32,6 @@
             <p class="tagline">Convert files instantly in your browser</p>
         </header>
 
-        <div class="privacy-badge">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1L3 3V7C3 10.5 5.5 13.5 8 14.5C10.5 13.5 13 10.5 13 7V3L8 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                <path d="M6 8L7.5 9.5L10.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>100% Private - Files never leave your browser</span>
-        </div>
-
         <main>
             <div class="upload-area" id="uploadArea">
                 <div class="upload-content">
@@ -47,37 +39,22 @@
                         <path d="M32 42V22M32 22L24 30M32 22L40 30" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M52 42V50C52 52.2091 50.2091 54 48 54H16C13.7909 54 12 52.2091 12 50V42" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                     </svg>
-                    <h2>Drop your file here</h2>
+                    <h2>Drop your files here</h2>
                     <p>or click to browse</p>
                     <p class="supported-formats">Images • Audio • Video • Documents • PDFs</p>
-                    <input type="file" id="fileInput" accept="*/*" hidden>
+                    <input type="file" id="fileInput" accept="*/*" multiple hidden>
                 </div>
             </div>
 
             <div class="conversion-panel" id="conversionPanel" style="display: none;">
-                <div class="file-info">
-                    <div class="file-icon" id="fileIcon">📄</div>
-                    <div class="file-details">
-                        <h3 id="fileName">filename.jpg</h3>
-                        <p id="fileSize">0 KB</p>
-                    </div>
+                <div id="filesList">
+                    <!-- Files will be dynamically added here -->
                 </div>
 
-                <div class="conversion-options">
-                    <h3>Convert to:</h3>
-                    <div class="format-grid" id="formatGrid">
-                        <!-- Dynamically populated -->
-                    </div>
+                <div class="action-buttons">
+                    <button class="convert-all-btn" id="convertAllBtn">Convert All</button>
+                    <button class="reset-btn" id="resetBtn">Add More Files</button>
                 </div>
-
-                <div class="progress-container" id="progressContainer" style="display: none;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <p class="progress-text" id="progressText">Converting...</p>
-                </div>
-
-                <button class="reset-btn" id="resetBtn">Convert Another File</button>
             </div>
         </main>
 
@@ -110,6 +87,14 @@
                         <span>No limits</span>
                     </div>
                 </div>
+            </div>
+
+            <div class="privacy-badge">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 1L4 4V9C4 13 7 17 10 18C13 17 16 13 16 9V4L10 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M7.5 10L9 11.5L12.5 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>100% Private - Files never leave your browser</span>
             </div>
         </footer>
     </div>
