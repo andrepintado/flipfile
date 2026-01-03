@@ -1,0 +1,27 @@
+{
+  "name": "flipfile",
+  "version": "1.0.0",
+  "description": "Fast and private file converter - All conversions happen in your browser",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "npx serve .",
+    "deploy": "echo 'Deploy to your static hosting provider of choice'"
+  },
+  "keywords": [
+    "file-converter",
+    "browser",
+    "client-side",
+    "privacy",
+    "image-converter",
+    "document-converter",
+    "offline"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrepintado/flipfile"
+  },
+  "homepage": "https://flipfile.tools"
+}
