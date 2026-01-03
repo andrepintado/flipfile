@@ -3,7 +3,8 @@
 
 class FlipFile {
     constructor() {
-        this.currentFile = null;
+        this.files = new Map(); // Store files with unique IDs
+        this.fileCounter = 0;
         this.init();
     }
 
@@ -15,6 +16,7 @@ class FlipFile {
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const resetBtn = document.getElementById('resetBtn');
+        const convertAllBtn = document.getElementById('convertAllBtn');
 
         // Click to upload
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -22,7 +24,7 @@ class FlipFile {
         // File input change
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                this.handleFile(e.target.files[0]);
+                this.handleFiles(Array.from(e.target.files));
             }
         });
 
@@ -40,128 +42,145 @@ class FlipFile {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
             if (e.dataTransfer.files.length > 0) {
-                this.handleFile(e.dataTransfer.files[0]);
+                this.handleFiles(Array.from(e.dataTransfer.files));
             }
         });
 
-        // Reset button
-        resetBtn.addEventListener('click', () => this.reset());
+        // Reset button - add more files
+        resetBtn.addEventListener('click', () => fileInput.click());
+
+        // Convert All button
+        convertAllBtn.addEventListener('click', () => this.convertAll());
     }
 
-    handleFile(file) {
-        this.currentFile = file;
-        this.displayFileInfo(file);
-        this.showConversionOptions(file);
+    handleFiles(fileList) {
+        fileList.forEach(file => {
+            const fileId = `file-${this.fileCounter++}`;
+            this.files.set(fileId, {
+                file: file,
+                selectedFormat: null,
+                status: 'pending' // pending, converting, completed
+            });
+            this.addFileToUI(fileId, file);
+        });
+
         this.toggleView('conversion');
     }
 
-    displayFileInfo(file) {
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const fileIcon = document.getElementById('fileIcon');
-
-        fileName.textContent = file.name;
-        fileSize.textContent = this.formatFileSize(file.size);
-        fileIcon.textContent = this.getFileIcon(file.type);
-    }
-
-    getFileIcon(mimeType) {
-        if (mimeType.startsWith('image/')) return '🖼️';
-        if (mimeType.startsWith('audio/')) return '🎵';
-        if (mimeType.startsWith('video/')) return '🎬';
-        if (mimeType.includes('pdf')) return '📕';
-        if (mimeType.includes('text')) return '📄';
-        if (mimeType.includes('json')) return '📋';
-        if (mimeType.includes('zip') || mimeType.includes('rar')) return '📦';
-        return '📄';
-    }
-
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-    }
-
-    showConversionOptions(file) {
-        const formatGrid = document.getElementById('formatGrid');
+    addFileToUI(fileId, file) {
+        const filesList = document.getElementById('filesList');
         const formats = this.getAvailableFormats(file.type);
 
-        formatGrid.innerHTML = '';
-        formats.forEach(format => {
-            const btn = document.createElement('button');
-            btn.className = 'format-btn';
-            btn.textContent = format;
-            btn.addEventListener('click', () => this.convertFile(file, format));
-            formatGrid.appendChild(btn);
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.id = fileId;
+
+        fileItem.innerHTML = `
+            <div class="file-icon">${this.getFileIcon(file.type)}</div>
+            <div class="file-details">
+                <h3>${file.name}</h3>
+                <p>${this.formatFileSize(file.size)}</p>
+            </div>
+            <select class="format-select" data-file-id="${fileId}">
+                <option value="">Select format</option>
+                ${formats.map(format => `<option value="${format}">${format}</option>`).join('')}
+            </select>
+            <button class="convert-btn" data-file-id="${fileId}" disabled>Convert</button>
+        `;
+
+        filesList.appendChild(fileItem);
+
+        // Add event listeners
+        const select = fileItem.querySelector('.format-select');
+        const convertBtn = fileItem.querySelector('.convert-btn');
+
+        select.addEventListener('change', (e) => {
+            const selectedFormat = e.target.value;
+            const fileData = this.files.get(fileId);
+            fileData.selectedFormat = selectedFormat;
+            convertBtn.disabled = !selectedFormat;
+        });
+
+        convertBtn.addEventListener('click', () => {
+            this.convertFile(fileId);
         });
     }
 
-    getAvailableFormats(mimeType) {
-        if (mimeType.startsWith('image/')) {
-            return ['PNG', 'JPG', 'WebP', 'GIF', 'BMP', 'ICO'];
-        }
-        if (mimeType.startsWith('audio/')) {
-            return ['MP3', 'WAV', 'OGG', 'M4A'];
-        }
-        if (mimeType.startsWith('video/')) {
-            return ['MP4', 'WebM', 'GIF', 'AVI'];
-        }
-        if (mimeType.includes('pdf')) {
-            return ['PNG', 'JPG', 'TXT'];
-        }
-        if (mimeType.includes('text') || mimeType.includes('json')) {
-            return ['TXT', 'JSON', 'HTML', 'MD'];
-        }
+    async convertFile(fileId) {
+        const fileData = this.files.get(fileId);
+        if (!fileData || !fileData.selectedFormat) return;
 
-        // Default options
-        return ['TXT'];
-    }
+        const fileItem = document.getElementById(fileId);
+        const convertBtn = fileItem.querySelector('.convert-btn');
+        const select = fileItem.querySelector('.format-select');
 
-    async convertFile(file, targetFormat) {
-        this.showProgress(true);
-        this.updateProgress(0, 'Preparing conversion...');
+        // Update UI state
+        fileData.status = 'converting';
+        fileItem.classList.add('converting');
+        convertBtn.disabled = true;
+        convertBtn.textContent = 'Converting...';
+        select.disabled = true;
 
         try {
             let result;
-            const mimeType = file.type;
+            const mimeType = fileData.file.type;
+            const targetFormat = fileData.selectedFormat;
 
             if (mimeType.startsWith('image/')) {
-                result = await this.convertImage(file, targetFormat);
+                result = await this.convertImage(fileData.file, targetFormat);
             } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
-                result = await this.convertMedia(file, targetFormat);
+                result = await this.convertMedia(fileData.file, targetFormat);
             } else if (mimeType.includes('text') || mimeType.includes('json')) {
-                result = await this.convertText(file, targetFormat);
+                result = await this.convertText(fileData.file, targetFormat);
             } else {
                 throw new Error('Unsupported file type');
             }
 
-            this.updateProgress(100, 'Conversion complete!');
-            setTimeout(() => {
-                this.downloadFile(result.blob, result.filename);
-                this.showProgress(false);
-            }, 500);
+            // Download the file
+            this.downloadFile(result.blob, result.filename);
+
+            // Update UI to completed state
+            fileData.status = 'completed';
+            fileItem.classList.remove('converting');
+            fileItem.classList.add('completed');
+            convertBtn.textContent = '✓ Downloaded';
+            convertBtn.disabled = false;
+
+            // Allow re-conversion
+            convertBtn.addEventListener('click', () => {
+                this.convertFile(fileId);
+            }, { once: true });
 
         } catch (error) {
             console.error('Conversion error:', error);
-            alert('Conversion failed: ' + error.message);
-            this.showProgress(false);
+            alert(`Conversion failed: ${error.message}`);
+
+            // Reset UI state
+            fileData.status = 'pending';
+            fileItem.classList.remove('converting');
+            convertBtn.disabled = false;
+            convertBtn.textContent = 'Convert';
+            select.disabled = false;
+        }
+    }
+
+    async convertAll() {
+        const pendingFiles = Array.from(this.files.entries())
+            .filter(([id, data]) => data.selectedFormat && data.status !== 'converting');
+
+        for (const [fileId, _] of pendingFiles) {
+            await this.convertFile(fileId);
         }
     }
 
     // IMAGE CONVERSION
     async convertImage(file, format) {
-        this.updateProgress(20, 'Loading image...');
-
         return new Promise((resolve, reject) => {
             const img = new Image();
             const reader = new FileReader();
 
             reader.onload = (e) => {
                 img.onload = () => {
-                    this.updateProgress(40, 'Converting image...');
-
                     const canvas = document.createElement('canvas');
                     canvas.width = img.width;
                     canvas.height = img.height;
@@ -175,15 +194,12 @@ class FlipFile {
 
                     ctx.drawImage(img, 0, 0);
 
-                    this.updateProgress(60, 'Encoding...');
-
                     const mimeType = this.getMimeType(format);
                     const quality = format === 'JPG' ? 0.92 : undefined;
 
                     canvas.toBlob(
                         (blob) => {
                             if (blob) {
-                                this.updateProgress(80, 'Finalizing...');
                                 const filename = this.changeFileExtension(file.name, format);
                                 resolve({ blob, filename });
                             } else {
@@ -206,26 +222,18 @@ class FlipFile {
 
     // MEDIA CONVERSION (Audio/Video)
     async convertMedia(file, format) {
-        this.updateProgress(30, 'Loading media converter...');
-
         // For now, show a message that FFmpeg is needed
-        // In production, we would load FFmpeg.wasm here
         alert('Audio and video conversion requires FFmpeg.wasm. This feature will be added in the next update!\n\nFor now, please use image or document conversion.');
-
         throw new Error('Media conversion not yet implemented');
     }
 
     // TEXT/DOCUMENT CONVERSION
     async convertText(file, format) {
-        this.updateProgress(30, 'Reading file...');
-
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
 
             reader.onload = async (e) => {
                 try {
-                    this.updateProgress(50, 'Converting...');
-
                     let content = e.target.result;
                     let blob;
                     const filename = this.changeFileExtension(file.name, format);
@@ -274,7 +282,6 @@ class FlipFile {
                             blob = new Blob([content], { type: 'text/plain' });
                     }
 
-                    this.updateProgress(80, 'Finalizing...');
                     resolve({ blob, filename });
 
                 } catch (error) {
@@ -288,6 +295,38 @@ class FlipFile {
     }
 
     // UTILITY FUNCTIONS
+    getAvailableFormats(mimeType) {
+        if (mimeType.startsWith('image/')) {
+            return ['PNG', 'JPG', 'WebP', 'GIF', 'BMP', 'ICO'];
+        }
+        if (mimeType.startsWith('audio/')) {
+            return ['MP3', 'WAV', 'OGG', 'M4A'];
+        }
+        if (mimeType.startsWith('video/')) {
+            return ['MP4', 'WebM', 'GIF', 'AVI'];
+        }
+        if (mimeType.includes('pdf')) {
+            return ['PNG', 'JPG', 'TXT'];
+        }
+        if (mimeType.includes('text') || mimeType.includes('json')) {
+            return ['TXT', 'JSON', 'HTML', 'MD'];
+        }
+
+        // Default options
+        return ['TXT'];
+    }
+
+    getFileIcon(mimeType) {
+        if (mimeType.startsWith('image/')) return '🖼️';
+        if (mimeType.startsWith('audio/')) return '🎵';
+        if (mimeType.startsWith('video/')) return '🎬';
+        if (mimeType.includes('pdf')) return '📕';
+        if (mimeType.includes('text')) return '📄';
+        if (mimeType.includes('json')) return '📋';
+        if (mimeType.includes('zip') || mimeType.includes('rar')) return '📦';
+        return '📄';
+    }
+
     getMimeType(format) {
         const mimeTypes = {
             'PNG': 'image/png',
@@ -317,6 +356,14 @@ class FlipFile {
         return `${nameWithoutExt}.${newExt.toLowerCase()}`;
     }
 
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+
     escapeHtml(text) {
         const map = {
             '&': '&amp;',
@@ -340,21 +387,6 @@ class FlipFile {
     }
 
     // UI FUNCTIONS
-    showProgress(show) {
-        const container = document.getElementById('progressContainer');
-        container.style.display = show ? 'block' : 'none';
-        if (!show) {
-            this.updateProgress(0, '');
-        }
-    }
-
-    updateProgress(percent, message) {
-        const fill = document.getElementById('progressFill');
-        const text = document.getElementById('progressText');
-        fill.style.width = percent + '%';
-        text.textContent = message;
-    }
-
     toggleView(view) {
         const uploadArea = document.getElementById('uploadArea');
         const conversionPanel = document.getElementById('conversionPanel');
@@ -366,12 +398,6 @@ class FlipFile {
             uploadArea.style.display = 'block';
             conversionPanel.style.display = 'none';
         }
-    }
-
-    reset() {
-        this.currentFile = null;
-        document.getElementById('fileInput').value = '';
-        this.toggleView('upload');
     }
 }
 
