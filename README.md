@@ -23,17 +23,20 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 - **Input:** TXT, JSON, HTML, MD, DOC, DOCX
 - **Output:** TXT, JSON, HTML, MD
 
-### Audio/Video (Coming Soon)
-- MP3, WAV, OGG, M4A
-- MP4, WebM, AVI, GIF
+### Audio/Video
+- **Input:** MP3, WAV, OGG, M4A, AAC, MP4, WebM, AVI
+- **Output:** MP3, WAV, OGG, M4A, AAC, MP4, WebM, GIF
+- **Note:** Audio/video conversion requires specific server headers. Works locally or on Netlify/Vercel/Cloudflare Pages, but **not on GitHub Pages**.
 
 ## 🛠️ Technology Stack
 
 - **Pure HTML/CSS/JavaScript** - No frameworks needed
 - **Canvas API** - For image manipulation
 - **Mammoth.js** - For DOC/DOCX conversion
+- **jsPDF** - For PDF generation
+- **PDF.js** - For PDF reading/conversion
+- **FFmpeg.wasm** - For audio/video conversion
 - **Web APIs** - File, Blob, and URL APIs
-- **Future:** FFmpeg.wasm for audio/video conversion
 
 ## 🔐 Privacy & Security
 
