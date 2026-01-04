@@ -122,7 +122,7 @@ class FlipFile {
             this.files.set(fileId, {
                 file: file,
                 selectedFormat: null,
-                selectedPostProcess: 'None',
+                selectedPostProcess: 'No post-process',
                 status: 'pending' // pending, converting, completed
             });
             this.addFileToUI(fileId, file);
@@ -137,7 +137,7 @@ class FlipFile {
         const filesList = document.getElementById('filesList');
         const formats = this.getAvailableFormats(file.type, file.name);
         const postProcesses = this.getAvailablePostProcesses(file.type, file.name);
-        const hasPostProcess = postProcesses.length > 1 || (postProcesses.length === 1 && postProcesses[0] !== 'None');
+        const hasPostProcess = postProcesses.length > 1 || (postProcesses.length === 1 && postProcesses[0] !== 'No post-process');
 
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -245,7 +245,7 @@ class FlipFile {
         // Check if source format matches target format
         const sourceFormat = this.getFormatFromMimeType(file.type, file.name);
         const sameFormat = sourceFormat === fileData.selectedFormat;
-        const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'None';
+        const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'No post-process';
 
         // Same format with no post-processing - disable button
         if (sameFormat && !hasPostProcess) {
@@ -295,7 +295,7 @@ class FlipFile {
             const mimeType = fileData.file.type;
             const fileName = fileData.file.name;
             const targetFormat = fileData.selectedFormat;
-            const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'None';
+            const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'No post-process';
 
             // Check if source format matches target format
             const sourceFormat = this.getFormatFromMimeType(mimeType, fileName);
@@ -711,15 +711,15 @@ class FlipFile {
 
     getAvailablePostProcesses(mimeType, filename = '') {
         if (mimeType.startsWith('image/')) {
-            return ['None', 'Compress', 'Make Squared', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical'];
+            return ['No post-process', 'Compress', 'Make Squared', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical'];
         }
         if (this.isDocumentFile(filename) || mimeType.includes('pdf')) {
-            return ['None', 'Text Only', 'Remove Formatting'];
+            return ['No post-process', 'Text Only', 'Remove Formatting'];
         }
         if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
-            return ['None'];
+            return ['No post-process'];
         }
-        return ['None'];
+        return ['No post-process'];
     }
 
     getFileIcon(mimeType) {
