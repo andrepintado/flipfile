@@ -122,7 +122,7 @@ class FlipFile {
             this.files.set(fileId, {
                 file: file,
                 selectedFormat: null,
-                selectedPostProcess: 'None',
+                selectedPostProcess: 'No post-process',
                 status: 'pending' // pending, converting, completed
             });
             this.addFileToUI(fileId, file);
@@ -137,7 +137,7 @@ class FlipFile {
         const filesList = document.getElementById('filesList');
         const formats = this.getAvailableFormats(file.type, file.name);
         const postProcesses = this.getAvailablePostProcesses(file.type, file.name);
-        const hasPostProcess = postProcesses.length > 1 || (postProcesses.length === 1 && postProcesses[0] !== 'None');
+        const hasPostProcess = postProcesses.length > 1 || (postProcesses.length === 1 && postProcesses[0] !== 'No post-process');
 
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -175,7 +175,9 @@ class FlipFile {
             const selectedFormat = e.target.value;
             const fileData = this.files.get(fileId);
             fileData.selectedFormat = selectedFormat;
-            convertBtn.disabled = !selectedFormat;
+
+            // Check if conversion is needed
+            this.updateConvertButtonState(fileId, file, convertBtn);
 
             // Reset completed state when format changes
             if (fileData.status === 'completed') {
@@ -189,6 +191,9 @@ class FlipFile {
             postProcessSelect.addEventListener('change', (e) => {
                 const fileData = this.files.get(fileId);
                 fileData.selectedPostProcess = e.target.value;
+
+                // Check if conversion is needed
+                this.updateConvertButtonState(fileId, file, convertBtn);
 
                 // Reset completed state when post-process changes
                 if (fileData.status === 'completed') {
@@ -225,6 +230,32 @@ class FlipFile {
         clearBtn.addEventListener('click', () => {
             this.removeFile(fileId);
         });
+    }
+
+    updateConvertButtonState(fileId, file, convertBtn) {
+        const fileData = this.files.get(fileId);
+
+        // No format selected - disable button
+        if (!fileData.selectedFormat) {
+            convertBtn.disabled = true;
+            convertBtn.title = '';
+            return;
+        }
+
+        // Check if source format matches target format
+        const sourceFormat = this.getFormatFromMimeType(file.type, file.name);
+        const sameFormat = sourceFormat === fileData.selectedFormat;
+        const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'No post-process';
+
+        // Same format with no post-processing - disable button
+        if (sameFormat && !hasPostProcess) {
+            convertBtn.disabled = true;
+            convertBtn.title = 'No conversion needed - same format';
+        } else {
+            // Different format or has post-processing - enable button
+            convertBtn.disabled = false;
+            convertBtn.title = '';
+        }
     }
 
     removeFile(fileId) {
@@ -264,25 +295,44 @@ class FlipFile {
             const mimeType = fileData.file.type;
             const fileName = fileData.file.name;
             const targetFormat = fileData.selectedFormat;
+            const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'No post-process';
 
-            // Special handling for PDF conversion
-            if (targetFormat === 'PDF') {
-                result = await this.convertToPDF(fileData.file, mimeType, fileName);
-            } else if (mimeType.startsWith('image/')) {
-                result = await this.convertImage(fileData.file, targetFormat);
-            } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
-                result = await this.convertMedia(fileData.file, targetFormat);
-            } else if (mimeType.includes('text') || mimeType.includes('json')) {
-                result = await this.convertText(fileData.file, targetFormat);
-            } else if (this.isDocumentFile(fileName)) {
-                result = await this.convertDocument(fileData.file, targetFormat);
-            } else {
-                throw new Error('Unsupported file type');
+            // Check if source format matches target format
+            const sourceFormat = this.getFormatFromMimeType(mimeType, fileName);
+            const sameFormat = sourceFormat === targetFormat;
+
+            // Optimize: if same format and no post-processing, return original
+            if (sameFormat && !hasPostProcess) {
+                result = {
+                    blob: fileData.file,
+                    filename: fileName
+                };
             }
+            // If same format but has post-processing, skip conversion and apply post-process directly
+            else if (sameFormat && hasPostProcess) {
+                result = await this.applyPostProcessing(fileData.file, fileData.selectedPostProcess, mimeType, fileName);
+            }
+            // Different format, do conversion
+            else {
+                // Special handling for PDF conversion
+                if (targetFormat === 'PDF') {
+                    result = await this.convertToPDF(fileData.file, mimeType, fileName);
+                } else if (mimeType.startsWith('image/')) {
+                    result = await this.convertImage(fileData.file, targetFormat);
+                } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
+                    result = await this.convertMedia(fileData.file, targetFormat);
+                } else if (mimeType.includes('text') || mimeType.includes('json')) {
+                    result = await this.convertText(fileData.file, targetFormat);
+                } else if (this.isDocumentFile(fileName)) {
+                    result = await this.convertDocument(fileData.file, targetFormat);
+                } else {
+                    throw new Error('Unsupported file type');
+                }
 
-            // Apply post-processing if selected
-            if (fileData.selectedPostProcess && fileData.selectedPostProcess !== 'None') {
-                result = await this.applyPostProcessing(result.blob, fileData.selectedPostProcess, mimeType, result.filename);
+                // Apply post-processing if selected (only if format changed)
+                if (hasPostProcess) {
+                    result = await this.applyPostProcessing(result.blob, fileData.selectedPostProcess, mimeType, result.filename);
+                }
             }
 
             // Store the converted result
@@ -661,15 +711,15 @@ class FlipFile {
 
     getAvailablePostProcesses(mimeType, filename = '') {
         if (mimeType.startsWith('image/')) {
-            return ['None', 'Compress', 'Make Squared', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical'];
+            return ['No post-process', 'Compress', 'Make Squared', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical'];
         }
         if (this.isDocumentFile(filename) || mimeType.includes('pdf')) {
-            return ['None', 'Text Only', 'Remove Formatting'];
+            return ['No post-process', 'Text Only', 'Remove Formatting'];
         }
         if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
-            return ['None'];
+            return ['No post-process'];
         }
-        return ['None'];
+        return ['No post-process'];
     }
 
     getFileIcon(mimeType) {
@@ -681,6 +731,36 @@ class FlipFile {
         if (mimeType.includes('json')) return '📋';
         if (mimeType.includes('zip') || mimeType.includes('rar')) return '📦';
         return '📄';
+    }
+
+    getFormatFromMimeType(mimeType, filename = '') {
+        // Check for document files by extension
+        if (this.isDocumentFile(filename)) {
+            return null; // DOC/DOCX don't match back to themselves
+        }
+
+        const formatMap = {
+            'image/png': 'PNG',
+            'image/jpeg': 'JPG',
+            'image/jpg': 'JPG',
+            'image/webp': 'WebP',
+            'image/gif': 'GIF',
+            'image/bmp': 'BMP',
+            'image/x-icon': 'ICO',
+            'audio/mpeg': 'MP3',
+            'audio/wav': 'WAV',
+            'audio/ogg': 'OGG',
+            'audio/mp4': 'M4A',
+            'audio/aac': 'AAC',
+            'video/mp4': 'MP4',
+            'video/webm': 'WebM',
+            'video/x-msvideo': 'AVI',
+            'text/plain': 'TXT',
+            'application/json': 'JSON',
+            'text/html': 'HTML',
+            'text/markdown': 'MD'
+        };
+        return formatMap[mimeType] || null;
     }
 
     getMimeType(format) {
