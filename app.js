@@ -33,8 +33,8 @@ class FlipFile {
 
             this.ffmpeg = new FFmpeg();
 
-            // Use jsDelivr CDN which has proper CORS headers
-            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+            // Use single-threaded core to avoid Worker CORS issues
+            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.12.6/dist/umd';
 
             await this.ffmpeg.load({
                 coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
