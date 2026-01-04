@@ -10,6 +10,36 @@ class FlipFile {
 
     init() {
         this.setupEventListeners();
+        this.setupModal();
+    }
+
+    setupModal() {
+        const modal = document.getElementById('customModal');
+        const closeBtn = document.querySelector('.modal-close');
+        const okBtn = document.getElementById('modalOkBtn');
+
+        // Close modal when clicking X or OK button
+        closeBtn.addEventListener('click', () => this.hideModal());
+        okBtn.addEventListener('click', () => this.hideModal());
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.hideModal();
+            }
+        });
+    }
+
+    showModal(message) {
+        const modal = document.getElementById('customModal');
+        const modalMessage = document.getElementById('modalMessage');
+        modalMessage.textContent = message;
+        modal.classList.add('show');
+    }
+
+    hideModal() {
+        const modal = document.getElementById('customModal');
+        modal.classList.remove('show');
     }
 
     setupEventListeners() {
@@ -99,7 +129,7 @@ class FlipFile {
     }
 
     handleFiles(fileList) {
-        const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB limit
+        const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB limit
         const validFiles = [];
         const oversizedFiles = [];
 
@@ -111,9 +141,9 @@ class FlipFile {
             }
         });
 
-        // Show alert for oversized files
+        // Show modal for oversized files
         if (oversizedFiles.length > 0) {
-            alert(`The following files exceed the 20MB limit and were not added:\n\n${oversizedFiles.join('\n')}\n\nPlease use smaller files for browser-based conversion.`);
+            this.showModal(`The following files exceed the 30MB limit and were not added:\n\n${oversizedFiles.join('\n')}\n\nPlease use smaller files for browser-based conversion.`);
         }
 
         // Add valid files
@@ -375,7 +405,7 @@ class FlipFile {
 
         } catch (error) {
             console.error('Conversion error:', error);
-            alert(`Conversion failed: ${error.message}`);
+            this.showModal(`Conversion failed: ${error.message}`);
 
             // Reset UI state
             fileData.status = 'pending';
@@ -463,7 +493,7 @@ class FlipFile {
     // MEDIA CONVERSION (Audio/Video)
     async convertMedia(file, format) {
         // For now, show a message that FFmpeg is needed
-        alert('Audio and video conversion requires FFmpeg.wasm. This feature will be added in the next update!\n\nFor now, please use image or document conversion.');
+        this.showModal('Audio and video conversion requires FFmpeg.wasm. This feature will be added in the next update!\n\nFor now, please use image or document conversion.');
         throw new Error('Media conversion not yet implemented');
     }
 
