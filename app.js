@@ -234,18 +234,25 @@ class FlipFile {
 
     updateConvertButtonState(fileId, file, convertBtn) {
         const fileData = this.files.get(fileId);
+        const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'No post-process';
 
-        // No format selected - disable button
+        // No format selected - check if post-process is selected
         if (!fileData.selectedFormat) {
-            convertBtn.disabled = true;
-            convertBtn.title = '';
+            if (hasPostProcess) {
+                // Enable button if post-process is selected (will use same format)
+                convertBtn.disabled = false;
+                convertBtn.title = '';
+            } else {
+                // No format and no post-process - disable button
+                convertBtn.disabled = true;
+                convertBtn.title = '';
+            }
             return;
         }
 
         // Check if source format matches target format
         const sourceFormat = this.getFormatFromMimeType(file.type, file.name);
         const sameFormat = sourceFormat === fileData.selectedFormat;
-        const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'No post-process';
 
         // Same format with no post-processing - disable button
         if (sameFormat && !hasPostProcess) {
@@ -276,7 +283,7 @@ class FlipFile {
 
     async convertFile(fileId, autoDownload = true) {
         const fileData = this.files.get(fileId);
-        if (!fileData || !fileData.selectedFormat) return;
+        if (!fileData) return;
 
         const fileItem = document.getElementById(fileId);
         const convertBtn = fileItem.querySelector('.convert-btn');
@@ -294,11 +301,16 @@ class FlipFile {
             let result;
             const mimeType = fileData.file.type;
             const fileName = fileData.file.name;
-            const targetFormat = fileData.selectedFormat;
             const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'No post-process';
 
-            // Check if source format matches target format
+            // If no format selected but has post-process, use source format
             const sourceFormat = this.getFormatFromMimeType(mimeType, fileName);
+            const targetFormat = fileData.selectedFormat || sourceFormat;
+
+            // If still no target format, can't proceed
+            if (!targetFormat) return;
+
+            // Check if source format matches target format
             const sameFormat = sourceFormat === targetFormat;
 
             // Optimize: if same format and no post-processing, return original
@@ -699,7 +711,8 @@ class FlipFile {
             return ['MP4', 'WebM', 'GIF', 'AVI'];
         }
         if (mimeType.includes('pdf')) {
-            return ['PNG', 'JPG', 'TXT'];
+            // PDF conversion requires pdf.js library - not currently supported
+            return [];
         }
         if (mimeType.includes('text') || mimeType.includes('json')) {
             return ['TXT', 'JSON', 'HTML', 'MD', 'PDF'];
@@ -713,8 +726,12 @@ class FlipFile {
         if (mimeType.startsWith('image/')) {
             return ['No post-process', 'Compress', 'Make Squared', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical'];
         }
-        if (this.isDocumentFile(filename) || mimeType.includes('pdf')) {
+        if (this.isDocumentFile(filename)) {
             return ['No post-process', 'Text Only', 'Remove Formatting'];
+        }
+        if (mimeType.includes('pdf')) {
+            // PDF post-processing not currently supported
+            return ['No post-process'];
         }
         if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
             return ['No post-process'];
