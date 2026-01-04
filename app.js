@@ -623,7 +623,7 @@ class FlipFile {
 
     getAvailablePostProcesses(mimeType, filename = '') {
         if (mimeType.startsWith('image/')) {
-            return ['None', 'Squarify', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical', 'Invert Colors'];
+            return ['None', 'Compress', 'Make Square', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical', 'Invert Colors'];
         }
         if (this.isDocumentFile(filename) || mimeType.includes('pdf')) {
             return ['None', 'Text Only', 'Remove Formatting'];
@@ -692,8 +692,16 @@ class FlipFile {
                 let height = img.height;
 
                 // Apply different post-processes
+                let quality = 0.92; // Default quality
                 switch (postProcess) {
-                    case 'Squarify':
+                    case 'Compress':
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0);
+                        quality = 0.6; // Reduced quality for compression
+                        break;
+
+                    case 'Make Square':
                         const size = Math.max(width, height);
                         const offsetX = (width - size) / 2;
                         const offsetY = (height - size) / 2;
@@ -784,7 +792,7 @@ class FlipFile {
                     } else {
                         reject(new Error('Post-processing failed'));
                     }
-                }, blob.type);
+                }, blob.type, quality);
             };
 
             img.onerror = () => {
