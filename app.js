@@ -19,13 +19,22 @@ class FlipFile {
         if (this.ffmpegLoaded) return;
 
         try {
+            // Check if FFmpeg libraries are available
+            if (typeof FFmpegWASM === 'undefined' || typeof FFmpegUtil === 'undefined') {
+                console.error('FFmpeg libraries not found. Available:', {
+                    FFmpegWASM: typeof FFmpegWASM,
+                    FFmpegUtil: typeof FFmpegUtil
+                });
+                throw new Error('FFmpeg libraries not loaded. Please refresh the page.');
+            }
+
             const { FFmpeg } = FFmpegWASM;
             const { toBlobURL } = FFmpegUtil;
 
             this.ffmpeg = new FFmpeg();
 
             // Load FFmpeg core
-            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+            const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
             await this.ffmpeg.load({
                 coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
                 wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
@@ -34,7 +43,7 @@ class FlipFile {
             this.ffmpegLoaded = true;
         } catch (error) {
             console.error('FFmpeg loading error:', error);
-            throw new Error('Failed to load audio conversion library');
+            throw new Error(`Failed to load audio conversion library: ${error.message}`);
         }
     }
 
