@@ -326,10 +326,16 @@ class FlipFile {
             }
             // Different format, do conversion
             else {
-                // Special handling for PDF conversion
+                // Special handling for PDF conversion (TO PDF)
                 if (targetFormat === 'PDF') {
                     result = await this.convertToPDF(fileData.file, mimeType, fileName);
-                } else if (mimeType.startsWith('image/')) {
+                }
+                // Convert FROM PDF
+                else if (mimeType.includes('pdf')) {
+                    result = await this.convertFromPDF(fileData.file, targetFormat);
+                }
+                // Other conversions
+                else if (mimeType.startsWith('image/')) {
                     result = await this.convertImage(fileData.file, targetFormat);
                 } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
                     result = await this.convertMedia(fileData.file, targetFormat);
@@ -689,6 +695,75 @@ class FlipFile {
         });
     }
 
+    async convertFromPDF(file, format) {
+        if (!window.pdfjsLib) {
+            throw new Error('PDF.js library not loaded');
+        }
+
+        // Set worker source
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    const filename = this.changeFileExtension(file.name, format);
+
+                    if (format === 'TXT') {
+                        // Extract text from all pages
+                        let fullText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += pageText + '\n\n';
+                        }
+                        const blob = new Blob([fullText], { type: 'text/plain' });
+                        resolve({ blob, filename });
+
+                    } else if (format === 'PNG' || format === 'JPG') {
+                        // Render first page to canvas
+                        const page = await pdf.getPage(1);
+                        const viewport = page.getViewport({ scale: 2.0 }); // 2x for better quality
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+
+                        await page.render({
+                            canvasContext: ctx,
+                            viewport: viewport
+                        }).promise;
+
+                        // Convert canvas to blob
+                        const mimeType = format === 'PNG' ? 'image/png' : 'image/jpeg';
+                        const quality = format === 'JPG' ? 0.92 : undefined;
+
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                resolve({ blob, filename });
+                            } else {
+                                reject(new Error('Failed to convert PDF page to image'));
+                            }
+                        }, mimeType, quality);
+                    } else {
+                        reject(new Error(`Unsupported PDF conversion format: ${format}`));
+                    }
+
+                } catch (error) {
+                    reject(new Error(`PDF conversion failed: ${error.message}`));
+                }
+            };
+
+            reader.onerror = () => reject(new Error('Failed to read PDF file'));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
     isDocumentFile(filename) {
         const ext = filename.toLowerCase().split('.').pop();
         return ['doc', 'docx'].includes(ext);
@@ -711,8 +786,7 @@ class FlipFile {
             return ['MP4', 'WebM', 'GIF', 'AVI'];
         }
         if (mimeType.includes('pdf')) {
-            // PDF conversion requires pdf.js library - not currently supported
-            return [];
+            return ['PNG', 'JPG', 'TXT'];
         }
         if (mimeType.includes('text') || mimeType.includes('json')) {
             return ['TXT', 'JSON', 'HTML', 'MD', 'PDF'];
