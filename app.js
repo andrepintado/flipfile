@@ -175,7 +175,9 @@ class FlipFile {
             const selectedFormat = e.target.value;
             const fileData = this.files.get(fileId);
             fileData.selectedFormat = selectedFormat;
-            convertBtn.disabled = !selectedFormat;
+
+            // Check if conversion is needed
+            this.updateConvertButtonState(fileId, file, convertBtn);
 
             // Reset completed state when format changes
             if (fileData.status === 'completed') {
@@ -189,6 +191,9 @@ class FlipFile {
             postProcessSelect.addEventListener('change', (e) => {
                 const fileData = this.files.get(fileId);
                 fileData.selectedPostProcess = e.target.value;
+
+                // Check if conversion is needed
+                this.updateConvertButtonState(fileId, file, convertBtn);
 
                 // Reset completed state when post-process changes
                 if (fileData.status === 'completed') {
@@ -225,6 +230,32 @@ class FlipFile {
         clearBtn.addEventListener('click', () => {
             this.removeFile(fileId);
         });
+    }
+
+    updateConvertButtonState(fileId, file, convertBtn) {
+        const fileData = this.files.get(fileId);
+
+        // No format selected - disable button
+        if (!fileData.selectedFormat) {
+            convertBtn.disabled = true;
+            convertBtn.title = '';
+            return;
+        }
+
+        // Check if source format matches target format
+        const sourceFormat = this.getFormatFromMimeType(file.type, file.name);
+        const sameFormat = sourceFormat === fileData.selectedFormat;
+        const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'None';
+
+        // Same format with no post-processing - disable button
+        if (sameFormat && !hasPostProcess) {
+            convertBtn.disabled = true;
+            convertBtn.title = 'No conversion needed - same format';
+        } else {
+            // Different format or has post-processing - enable button
+            convertBtn.disabled = false;
+            convertBtn.title = '';
+        }
     }
 
     removeFile(fileId) {
