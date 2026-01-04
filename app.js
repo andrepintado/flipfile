@@ -264,25 +264,44 @@ class FlipFile {
             const mimeType = fileData.file.type;
             const fileName = fileData.file.name;
             const targetFormat = fileData.selectedFormat;
+            const hasPostProcess = fileData.selectedPostProcess && fileData.selectedPostProcess !== 'None';
 
-            // Special handling for PDF conversion
-            if (targetFormat === 'PDF') {
-                result = await this.convertToPDF(fileData.file, mimeType, fileName);
-            } else if (mimeType.startsWith('image/')) {
-                result = await this.convertImage(fileData.file, targetFormat);
-            } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
-                result = await this.convertMedia(fileData.file, targetFormat);
-            } else if (mimeType.includes('text') || mimeType.includes('json')) {
-                result = await this.convertText(fileData.file, targetFormat);
-            } else if (this.isDocumentFile(fileName)) {
-                result = await this.convertDocument(fileData.file, targetFormat);
-            } else {
-                throw new Error('Unsupported file type');
+            // Check if source format matches target format
+            const sourceFormat = this.getFormatFromMimeType(mimeType, fileName);
+            const sameFormat = sourceFormat === targetFormat;
+
+            // Optimize: if same format and no post-processing, return original
+            if (sameFormat && !hasPostProcess) {
+                result = {
+                    blob: fileData.file,
+                    filename: fileName
+                };
             }
+            // If same format but has post-processing, skip conversion and apply post-process directly
+            else if (sameFormat && hasPostProcess) {
+                result = await this.applyPostProcessing(fileData.file, fileData.selectedPostProcess, mimeType, fileName);
+            }
+            // Different format, do conversion
+            else {
+                // Special handling for PDF conversion
+                if (targetFormat === 'PDF') {
+                    result = await this.convertToPDF(fileData.file, mimeType, fileName);
+                } else if (mimeType.startsWith('image/')) {
+                    result = await this.convertImage(fileData.file, targetFormat);
+                } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
+                    result = await this.convertMedia(fileData.file, targetFormat);
+                } else if (mimeType.includes('text') || mimeType.includes('json')) {
+                    result = await this.convertText(fileData.file, targetFormat);
+                } else if (this.isDocumentFile(fileName)) {
+                    result = await this.convertDocument(fileData.file, targetFormat);
+                } else {
+                    throw new Error('Unsupported file type');
+                }
 
-            // Apply post-processing if selected
-            if (fileData.selectedPostProcess && fileData.selectedPostProcess !== 'None') {
-                result = await this.applyPostProcessing(result.blob, fileData.selectedPostProcess, mimeType, result.filename);
+                // Apply post-processing if selected (only if format changed)
+                if (hasPostProcess) {
+                    result = await this.applyPostProcessing(result.blob, fileData.selectedPostProcess, mimeType, result.filename);
+                }
             }
 
             // Store the converted result
@@ -681,6 +700,36 @@ class FlipFile {
         if (mimeType.includes('json')) return '📋';
         if (mimeType.includes('zip') || mimeType.includes('rar')) return '📦';
         return '📄';
+    }
+
+    getFormatFromMimeType(mimeType, filename = '') {
+        // Check for document files by extension
+        if (this.isDocumentFile(filename)) {
+            return null; // DOC/DOCX don't match back to themselves
+        }
+
+        const formatMap = {
+            'image/png': 'PNG',
+            'image/jpeg': 'JPG',
+            'image/jpg': 'JPG',
+            'image/webp': 'WebP',
+            'image/gif': 'GIF',
+            'image/bmp': 'BMP',
+            'image/x-icon': 'ICO',
+            'audio/mpeg': 'MP3',
+            'audio/wav': 'WAV',
+            'audio/ogg': 'OGG',
+            'audio/mp4': 'M4A',
+            'audio/aac': 'AAC',
+            'video/mp4': 'MP4',
+            'video/webm': 'WebM',
+            'video/x-msvideo': 'AVI',
+            'text/plain': 'TXT',
+            'application/json': 'JSON',
+            'text/html': 'HTML',
+            'text/markdown': 'MD'
+        };
+        return formatMap[mimeType] || null;
     }
 
     getMimeType(format) {
