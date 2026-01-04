@@ -70,10 +70,32 @@ class FlipFile {
         resetBtn.addEventListener('click', () => fileInput.click());
 
         // Convert All button (without download)
-        convertAllBtn.addEventListener('click', () => this.convertAll(false));
+        convertAllBtn.addEventListener('click', async () => {
+            convertAllBtn.disabled = true;
+            convertAllBtn.classList.add('loading');
+            const originalText = convertAllBtn.textContent;
+            convertAllBtn.textContent = 'Converting...';
+
+            await this.convertAll(false);
+
+            convertAllBtn.disabled = false;
+            convertAllBtn.classList.remove('loading');
+            convertAllBtn.textContent = originalText;
+        });
 
         // Convert and Download All button
-        convertDownloadBtn.addEventListener('click', () => this.convertAll(true));
+        convertDownloadBtn.addEventListener('click', async () => {
+            convertDownloadBtn.disabled = true;
+            convertDownloadBtn.classList.add('loading');
+            const originalText = convertDownloadBtn.textContent;
+            convertDownloadBtn.textContent = 'Converting...';
+
+            await this.convertAll(true);
+
+            convertDownloadBtn.disabled = false;
+            convertDownloadBtn.classList.remove('loading');
+            convertDownloadBtn.textContent = originalText;
+        });
     }
 
     handleFiles(fileList) {
@@ -177,11 +199,24 @@ class FlipFile {
             });
         }
 
-        convertBtn.addEventListener('click', () => {
+        convertBtn.addEventListener('click', async () => {
             // Check if already converted - then download
             const fileData = this.files.get(fileId);
             if (fileData.status === 'completed' && fileData.convertedBlob) {
-                this.downloadFile(fileData.convertedBlob, fileData.convertedFilename);
+                // Show loading state during download
+                convertBtn.disabled = true;
+                convertBtn.classList.add('loading');
+                const originalText = convertBtn.textContent;
+                convertBtn.textContent = 'Downloading...';
+
+                await this.downloadFile(fileData.convertedBlob, fileData.convertedFilename);
+
+                // Reset button state
+                setTimeout(() => {
+                    convertBtn.disabled = false;
+                    convertBtn.classList.remove('loading');
+                    convertBtn.textContent = originalText;
+                }, 500);
             } else {
                 this.convertFile(fileId, false); // false = don't auto-download
             }
@@ -220,6 +255,7 @@ class FlipFile {
         fileData.status = 'converting';
         fileItem.classList.add('converting');
         convertBtn.disabled = true;
+        convertBtn.classList.add('loading');
         convertBtn.textContent = 'Converting...';
         select.disabled = true;
 
@@ -266,6 +302,7 @@ class FlipFile {
             fileItem.classList.remove('converting');
             fileItem.classList.add('completed');
             convertBtn.disabled = false;
+            convertBtn.classList.remove('loading');
             select.disabled = false;
 
         } catch (error) {
@@ -276,6 +313,7 @@ class FlipFile {
             fileData.status = 'pending';
             fileItem.classList.remove('converting');
             convertBtn.disabled = false;
+            convertBtn.classList.remove('loading');
             convertBtn.textContent = 'Convert';
             select.disabled = false;
         }
@@ -623,7 +661,7 @@ class FlipFile {
 
     getAvailablePostProcesses(mimeType, filename = '') {
         if (mimeType.startsWith('image/')) {
-            return ['None', 'Compress', 'Make Square', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical', 'Invert Colors'];
+            return ['None', 'Compress', 'Make Squared', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical'];
         }
         if (this.isDocumentFile(filename) || mimeType.includes('pdf')) {
             return ['None', 'Text Only', 'Remove Formatting'];
@@ -701,7 +739,7 @@ class FlipFile {
                         quality = 0.6; // Reduced quality for compression
                         break;
 
-                    case 'Make Square':
+                    case 'Make Squared':
                         const size = Math.max(width, height);
                         const offsetX = (width - size) / 2;
                         const offsetY = (height - size) / 2;
@@ -763,20 +801,6 @@ class FlipFile {
                         canvas.height = height;
                         ctx.scale(1, -1);
                         ctx.drawImage(img, 0, -height);
-                        break;
-
-                    case 'Invert Colors':
-                        canvas.width = width;
-                        canvas.height = height;
-                        ctx.drawImage(img, 0, 0);
-                        const invertData = ctx.getImageData(0, 0, width, height);
-                        const invertPixels = invertData.data;
-                        for (let i = 0; i < invertPixels.length; i += 4) {
-                            invertPixels[i] = 255 - invertPixels[i];
-                            invertPixels[i + 1] = 255 - invertPixels[i + 1];
-                            invertPixels[i + 2] = 255 - invertPixels[i + 2];
-                        }
-                        ctx.putImageData(invertData, 0, 0);
                         break;
 
                     default:

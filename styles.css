@@ -317,6 +317,33 @@ main {
     transform: none;
 }
 
+.convert-btn.loading {
+    background: var(--primary);
+    position: relative;
+    color: transparent;
+}
+
+.convert-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .clear-btn {
     width: 36px;
     height: 36px;
@@ -474,6 +501,29 @@ main {
     background: var(--border);
     cursor: not-allowed;
     transform: none;
+}
+
+.convert-all-btn.loading,
+.convert-download-btn.loading {
+    background: var(--primary);
+    position: relative;
+    color: transparent;
+}
+
+.convert-all-btn.loading::after,
+.convert-download-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spinner 0.6s linear infinite;
 }
 
 .reset-btn {
