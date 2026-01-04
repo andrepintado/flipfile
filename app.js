@@ -33,11 +33,13 @@ class FlipFile {
 
             this.ffmpeg = new FFmpeg();
 
-            // Load FFmpeg core
+            // Load FFmpeg core with all required files as blob URLs to avoid CORS
             const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+
             await this.ffmpeg.load({
                 coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript')
             });
 
             this.ffmpegLoaded = true;
