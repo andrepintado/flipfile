@@ -77,7 +77,25 @@ class FlipFile {
     }
 
     handleFiles(fileList) {
+        const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB limit
+        const validFiles = [];
+        const oversizedFiles = [];
+
         fileList.forEach(file => {
+            if (file.size > MAX_FILE_SIZE) {
+                oversizedFiles.push(`${file.name} (${this.formatFileSize(file.size)})`);
+            } else {
+                validFiles.push(file);
+            }
+        });
+
+        // Show alert for oversized files
+        if (oversizedFiles.length > 0) {
+            alert(`The following files exceed the 20MB limit and were not added:\n\n${oversizedFiles.join('\n')}\n\nPlease use smaller files for browser-based conversion.`);
+        }
+
+        // Add valid files
+        validFiles.forEach(file => {
             const fileId = `file-${this.fileCounter++}`;
             this.files.set(fileId, {
                 file: file,
@@ -88,17 +106,23 @@ class FlipFile {
             this.addFileToUI(fileId, file);
         });
 
-        this.toggleView('conversion');
+        if (validFiles.length > 0) {
+            this.toggleView('conversion');
+        }
     }
 
     addFileToUI(fileId, file) {
         const filesList = document.getElementById('filesList');
         const formats = this.getAvailableFormats(file.type, file.name);
         const postProcesses = this.getAvailablePostProcesses(file.type, file.name);
+        const hasPostProcess = postProcesses.length > 1 || (postProcesses.length === 1 && postProcesses[0] !== 'None');
 
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
         fileItem.id = fileId;
+        if (!hasPostProcess) {
+            fileItem.classList.add('no-postprocess');
+        }
 
         fileItem.innerHTML = `
             <div class="file-icon">${this.getFileIcon(file.type)}</div>
@@ -110,9 +134,9 @@ class FlipFile {
                 <option value="">Select format</option>
                 ${formats.map(format => `<option value="${format}">${format}</option>`).join('')}
             </select>
-            <select class="postprocess-select" data-file-id="${fileId}">
+            ${hasPostProcess ? `<select class="postprocess-select" data-file-id="${fileId}">
                 ${postProcesses.map(pp => `<option value="${pp}">${pp}</option>`).join('')}
-            </select>
+            </select>` : ''}
             <button class="convert-btn" data-file-id="${fileId}" disabled>Convert</button>
             <button class="clear-btn" data-file-id="${fileId}" title="Remove file">×</button>
         `;
@@ -139,17 +163,19 @@ class FlipFile {
             }
         });
 
-        postProcessSelect.addEventListener('change', (e) => {
-            const fileData = this.files.get(fileId);
-            fileData.selectedPostProcess = e.target.value;
+        if (postProcessSelect) {
+            postProcessSelect.addEventListener('change', (e) => {
+                const fileData = this.files.get(fileId);
+                fileData.selectedPostProcess = e.target.value;
 
-            // Reset completed state when post-process changes
-            if (fileData.status === 'completed') {
-                fileData.status = 'pending';
-                fileItem.classList.remove('completed');
-                convertBtn.textContent = 'Convert';
-            }
-        });
+                // Reset completed state when post-process changes
+                if (fileData.status === 'completed') {
+                    fileData.status = 'pending';
+                    fileItem.classList.remove('completed');
+                    convertBtn.textContent = 'Convert';
+                }
+            });
+        }
 
         convertBtn.addEventListener('click', () => {
             // Check if already converted - then download
@@ -203,7 +229,10 @@ class FlipFile {
             const fileName = fileData.file.name;
             const targetFormat = fileData.selectedFormat;
 
-            if (mimeType.startsWith('image/')) {
+            // Special handling for PDF conversion
+            if (targetFormat === 'PDF') {
+                result = await this.convertToPDF(fileData.file, mimeType, fileName);
+            } else if (mimeType.startsWith('image/')) {
                 result = await this.convertImage(fileData.file, targetFormat);
             } else if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
                 result = await this.convertMedia(fileData.file, targetFormat);
@@ -479,6 +508,87 @@ class FlipFile {
         });
     }
 
+    async convertToPDF(file, mimeType, fileName) {
+        const { jsPDF } = window.jspdf;
+        if (!jsPDF) {
+            throw new Error('PDF library not loaded');
+        }
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                try {
+                    const doc = new jsPDF();
+                    const filename = this.changeFileExtension(file.name, 'PDF');
+
+                    if (mimeType.startsWith('image/')) {
+                        // Convert image to PDF
+                        const img = new Image();
+                        img.onload = () => {
+                            const imgWidth = img.width;
+                            const imgHeight = img.height;
+                            const pageWidth = doc.internal.pageSize.getWidth();
+                            const pageHeight = doc.internal.pageSize.getHeight();
+
+                            // Calculate scaling to fit page while maintaining aspect ratio
+                            const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+                            const scaledWidth = imgWidth * ratio;
+                            const scaledHeight = imgHeight * ratio;
+
+                            // Center the image
+                            const x = (pageWidth - scaledWidth) / 2;
+                            const y = (pageHeight - scaledHeight) / 2;
+
+                            doc.addImage(img, 'JPEG', x, y, scaledWidth, scaledHeight);
+                            const pdfBlob = doc.output('blob');
+                            resolve({ blob: pdfBlob, filename });
+                        };
+                        img.onerror = () => reject(new Error('Failed to load image for PDF conversion'));
+                        img.src = e.target.result;
+
+                    } else if (this.isDocumentFile(fileName)) {
+                        // Convert DOC/DOCX to text first, then to PDF
+                        if (!window.mammoth) {
+                            throw new Error('Document conversion library not loaded');
+                        }
+                        const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+                        const text = result.value;
+
+                        // Add text to PDF with word wrapping
+                        const lines = doc.splitTextToSize(text, doc.internal.pageSize.getWidth() - 20);
+                        doc.text(lines, 10, 10);
+
+                        const pdfBlob = doc.output('blob');
+                        resolve({ blob: pdfBlob, filename });
+
+                    } else {
+                        // Convert text to PDF
+                        const text = e.target.result;
+                        const lines = doc.splitTextToSize(text, doc.internal.pageSize.getWidth() - 20);
+                        doc.text(lines, 10, 10);
+
+                        const pdfBlob = doc.output('blob');
+                        resolve({ blob: pdfBlob, filename });
+                    }
+
+                } catch (error) {
+                    reject(new Error(`PDF conversion failed: ${error.message}`));
+                }
+            };
+
+            reader.onerror = () => reject(new Error('Failed to read file for PDF conversion'));
+
+            if (mimeType.startsWith('image/')) {
+                reader.readAsDataURL(file);
+            } else if (this.isDocumentFile(fileName)) {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file);
+            }
+        });
+    }
+
     isDocumentFile(filename) {
         const ext = filename.toLowerCase().split('.').pop();
         return ['doc', 'docx'].includes(ext);
@@ -488,11 +598,11 @@ class FlipFile {
     getAvailableFormats(mimeType, filename = '') {
         // Check for DOC/DOCX files by extension
         if (this.isDocumentFile(filename)) {
-            return ['TXT', 'HTML', 'MD', 'LaTeX'];
+            return ['TXT', 'HTML', 'MD', 'LaTeX', 'PDF'];
         }
 
         if (mimeType.startsWith('image/')) {
-            return ['PNG', 'JPG', 'WebP', 'GIF', 'BMP', 'ICO'];
+            return ['PNG', 'JPG', 'WebP', 'GIF', 'BMP', 'ICO', 'PDF'];
         }
         if (mimeType.startsWith('audio/')) {
             return ['MP3', 'WAV', 'OGG', 'M4A', 'AAC'];
@@ -504,7 +614,7 @@ class FlipFile {
             return ['PNG', 'JPG', 'TXT'];
         }
         if (mimeType.includes('text') || mimeType.includes('json')) {
-            return ['TXT', 'JSON', 'HTML', 'MD'];
+            return ['TXT', 'JSON', 'HTML', 'MD', 'PDF'];
         }
 
         // Default options
@@ -513,7 +623,7 @@ class FlipFile {
 
     getAvailablePostProcesses(mimeType, filename = '') {
         if (mimeType.startsWith('image/')) {
-            return ['None', 'Squarify', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical', 'Invert Colors'];
+            return ['None', 'Compress', 'Make Square', 'Grayscale', 'Resize 50%', 'Resize 200%', 'Rotate 90°', 'Rotate 180°', 'Flip Horizontal', 'Flip Vertical', 'Invert Colors'];
         }
         if (this.isDocumentFile(filename) || mimeType.includes('pdf')) {
             return ['None', 'Text Only', 'Remove Formatting'];
@@ -582,9 +692,17 @@ class FlipFile {
                 let height = img.height;
 
                 // Apply different post-processes
+                let quality = 0.92; // Default quality
                 switch (postProcess) {
-                    case 'Squarify':
-                        const size = Math.min(width, height);
+                    case 'Compress':
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0);
+                        quality = 0.6; // Reduced quality for compression
+                        break;
+
+                    case 'Make Square':
+                        const size = Math.max(width, height);
                         const offsetX = (width - size) / 2;
                         const offsetY = (height - size) / 2;
                         canvas.width = size;
@@ -674,7 +792,7 @@ class FlipFile {
                     } else {
                         reject(new Error('Post-processing failed'));
                     }
-                }, blob.type);
+                }, blob.type, quality);
             };
 
             img.onerror = () => {

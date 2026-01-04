@@ -29,7 +29,7 @@ body {
 }
 
 .container {
-    max-width: 800px;
+    max-width: 1100px;
     margin: 0 auto;
 }
 
@@ -79,12 +79,35 @@ header {
     font-size: 1rem;
     font-weight: 500;
     width: 100%;
-    max-width: 800px;
+    max-width: 1100px;
 }
 
 .privacy-badge svg {
     color: var(--white);
     flex-shrink: 0;
+}
+
+.contact-message {
+    text-align: center;
+    margin-top: 15px;
+    color: var(--white);
+    font-size: 0.9rem;
+}
+
+.contact-message p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.contact-message a {
+    color: var(--white);
+    text-decoration: underline;
+    font-weight: 600;
+    transition: opacity 0.2s ease;
+}
+
+.contact-message a:hover {
+    opacity: 0.8;
 }
 
 /* Main */
@@ -171,6 +194,10 @@ main {
     background: var(--bg);
     border-radius: 12px;
     transition: all 0.2s ease;
+}
+
+.file-item.no-postprocess {
+    grid-template-columns: auto 1fr auto auto auto;
 }
 
 .file-item:hover {
