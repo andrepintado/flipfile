@@ -5,6 +5,8 @@ class FlipFile {
     constructor() {
         this.files = new Map(); // Store files with unique IDs
         this.fileCounter = 0;
+        this.ffmpeg = null;
+        this.ffmpegLoaded = false;
         this.init();
     }
 
@@ -13,6 +15,60 @@ class FlipFile {
         this.setupModal();
     }
 
+    async loadFFmpeg() {
+        if (this.ffmpegLoaded) return;
+
+        try {
+            // Check if running from file:// protocol
+            if (window.location.protocol === 'file:') {
+                throw new Error('Audio conversion requires the site to be served over HTTP/HTTPS. Please use a local server (e.g., "python -m http.server" or "npx serve") instead of opening the HTML file directly.');
+            }
+
+            // Check if SharedArrayBuffer is available (requires proper COEP/COOP headers)
+            if (typeof SharedArrayBuffer === 'undefined') {
+                throw new Error('Audio/video conversion requires Cross-Origin-Embedder-Policy and Cross-Origin-Opener-Policy headers to be set. GitHub Pages does not support these headers. Please deploy to Netlify, Vercel, or Cloudflare Pages for audio/video conversion support, or run locally with the provided server.py.');
+            }
+
+            // Check if FFmpeg libraries are available
+            if (typeof FFmpegWASM === 'undefined' || typeof FFmpegUtil === 'undefined') {
+                console.error('FFmpeg libraries not found. Available:', {
+                    FFmpegWASM: typeof FFmpegWASM,
+                    FFmpegUtil: typeof FFmpegUtil
+                });
+                throw new Error('FFmpeg libraries not loaded. Please refresh the page.');
+            }
+
+            const { FFmpeg } = FFmpegWASM;
+            const { toBlobURL } = FFmpegUtil;
+
+            this.ffmpeg = new FFmpeg();
+
+            // Add progress logging
+            this.ffmpeg.on('log', ({ message }) => {
+                console.log('FFmpeg:', message);
+            });
+
+            // Load FFmpeg core from self-hosted files to avoid CORS issues
+            const baseURL = '/libs';
+
+            // Convert URLs to blob URLs to avoid CORS issues with Workers
+            const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+            const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+            const workerURL = await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript');
+
+            await this.ffmpeg.load({
+                coreURL: coreURL,
+                wasmURL: wasmURL,
+                workerURL: workerURL
+            });
+
+            this.ffmpegLoaded = true;
+            console.log('FFmpeg loaded successfully');
+        } catch (error) {
+            console.error('FFmpeg loading error:', error);
+            throw new Error(`Failed to load audio conversion library: ${error.message}`);
+        }
+    }
     setupModal() {
         const modal = document.getElementById('customModal');
         const closeBtn = document.querySelector('.modal-close');
@@ -492,9 +548,62 @@ class FlipFile {
 
     // MEDIA CONVERSION (Audio/Video)
     async convertMedia(file, format) {
-        // Audio/video conversion not currently supported
-        this.showModal('Audio and video conversion is not currently supported.\n\nThis feature will be added in a future update!');
-        throw new Error('Media conversion not yet implemented');
+        try {
+            // Load FFmpeg if not already loaded
+            await this.loadFFmpeg();
+
+            // Get file extension for input format
+            const inputExt = file.name.split('.').pop().toLowerCase();
+            const outputExt = format.toLowerCase();
+
+            // Write input file to FFmpeg virtual filesystem
+            const inputFileName = `input.${inputExt}`;
+            const outputFileName = `output.${outputExt}`;
+
+            await this.ffmpeg.writeFile(inputFileName, await this.fetchFile(file));
+
+            // Run FFmpeg conversion
+            await this.ffmpeg.exec(['-i', inputFileName, outputFileName]);
+
+            // Read output file
+            const data = await this.ffmpeg.readFile(outputFileName);
+
+            // Clean up
+            await this.ffmpeg.deleteFile(inputFileName);
+            await this.ffmpeg.deleteFile(outputFileName);
+
+            // Create blob from output data
+            const mimeTypes = {
+                'mp3': 'audio/mpeg',
+                'wav': 'audio/wav',
+                'ogg': 'audio/ogg',
+                'm4a': 'audio/mp4',
+                'aac': 'audio/aac',
+                'mp4': 'video/mp4',
+                'webm': 'video/webm',
+                'avi': 'video/x-msvideo',
+                'gif': 'image/gif'
+            };
+
+            const blob = new Blob([data.buffer], { type: mimeTypes[outputExt] || 'application/octet-stream' });
+            const filename = this.changeFileExtension(file.name, format);
+
+            return { blob, filename };
+        } catch (error) {
+            console.error('Media conversion error:', error);
+            throw error;
+        }
+    }
+
+    async fetchFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                resolve(new Uint8Array(e.target.result));
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
     }
 
     // TEXT/DOCUMENT CONVERSION

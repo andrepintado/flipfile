@@ -35,6 +35,45 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 - **Web APIs** - File, Blob, and URL APIs
 - **Future:** FFmpeg.wasm for audio/video conversion
 
+## 🚀 Setup for Audio/Video Conversion
+
+To enable audio and video conversion features, you need to download the FFmpeg core files:
+
+### Quick Setup
+
+Run the provided download script:
+
+```bash
+./download-ffmpeg-core.sh
+```
+
+This will download the required FFmpeg core files (`ffmpeg-core.js`, `ffmpeg-core.wasm`, `ffmpeg-core.worker.js`) to the `libs/` directory.
+
+### Manual Setup
+
+Alternatively, download the files manually:
+
+```bash
+cd libs
+curl -L -o ffmpeg-core.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.js"
+curl -L -o ffmpeg-core.wasm "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.wasm"
+curl -L -o ffmpeg-core.worker.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.worker.js"
+```
+
+### Why Self-Host?
+
+Self-hosting FFmpeg files avoids CORS issues when loading Web Workers from external CDNs.
+
+### Deployment Notes
+
+Audio/video conversion requires `Cross-Origin-Embedder-Policy` and `Cross-Origin-Opener-Policy` headers:
+
+- ❌ **GitHub Pages** - Does not support required headers
+- ✅ **Netlify** - Supports custom headers
+- ✅ **Vercel** - Supports custom headers
+- ✅ **Cloudflare Pages** - Supports custom headers
+- ✅ **Local Development** - Use the provided `server.py` script
+
 ## 🔐 Privacy & Security
 
 FlipFile is designed with privacy as the #1 priority:
