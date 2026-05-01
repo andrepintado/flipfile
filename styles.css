@@ -584,6 +584,7 @@ main {
 }
 
 .convert-all-btn,
+.download-all-btn,
 .convert-download-btn {
     padding: 16px;
     background: var(--primary);
@@ -597,6 +598,7 @@ main {
 }
 
 .convert-all-btn:hover,
+.download-all-btn:hover,
 .convert-download-btn:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
@@ -604,11 +606,13 @@ main {
 }
 
 .convert-all-btn:active,
+.download-all-btn:active,
 .convert-download-btn:active {
     transform: translateY(0);
 }
 
 .convert-all-btn:disabled,
+.download-all-btn:disabled,
 .convert-download-btn:disabled {
     background: var(--border);
     cursor: not-allowed;
@@ -616,6 +620,7 @@ main {
 }
 
 .convert-all-btn.loading,
+.download-all-btn.loading,
 .convert-download-btn.loading {
     background: var(--primary);
     position: relative;
@@ -623,6 +628,7 @@ main {
 }
 
 .convert-all-btn.loading::after,
+.download-all-btn.loading::after,
 .convert-download-btn.loading::after {
     content: '';
     position: absolute;

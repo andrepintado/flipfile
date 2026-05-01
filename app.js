@@ -130,6 +130,7 @@ class FlipFile {
         const fileInput = document.getElementById('fileInput');
         const resetBtn = document.getElementById('resetBtn');
         const convertAllBtn = document.getElementById('convertAllBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
         const convertDownloadBtn = document.getElementById('convertDownloadBtn');
 
         // Click to upload
@@ -193,6 +194,11 @@ class FlipFile {
             convertAllBtn.disabled = false;
             convertAllBtn.classList.remove('loading');
             convertAllBtn.textContent = originalText;
+        });
+
+        // Download All button (downloads already converted files)
+        downloadAllBtn.addEventListener('click', () => {
+            this.downloadAllConverted();
         });
 
         // Convert and Download All button
@@ -628,14 +634,6 @@ class FlipFile {
 
         for (const [fileId, _] of pendingFiles) {
             await this.convertFile(fileId, autoDownload);
-        }
-
-        // If not auto-downloading, offer to download all at once
-        if (!autoDownload && pendingFiles.length > 0) {
-            const downloadAll = await this.showConfirm(`${pendingFiles.length} file(s) converted. Download all now?`);
-            if (downloadAll) {
-                this.downloadAllConverted();
-            }
         }
     }
 
