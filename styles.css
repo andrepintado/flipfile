@@ -87,6 +87,77 @@ header {
     flex-shrink: 0;
 }
 
+.supported-formats-section {
+    margin-top: 2rem;
+    padding: 2rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.supported-formats-section h3 {
+    text-align: center;
+    color: var(--white);
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.formats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.format-category {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.format-category h4 {
+    margin: 0 0 0.75rem 0;
+    color: var(--white);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.format-list {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.format-list strong {
+    color: var(--white);
+    font-weight: 600;
+}
+
+.format-note {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.format-note small {
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.6;
+}
+
+.format-note a {
+    color: var(--white);
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+.format-note a:hover {
+    opacity: 0.8;
+}
+
 .contact-message {
     text-align: center;
     margin-top: 15px;

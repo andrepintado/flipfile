@@ -48,13 +48,8 @@ class FlipFile {
                 console.log('FFmpeg:', message);
             });
 
-<<<<<<< claude/flipfile-converter-app-U96DJ
             // Load FFmpeg core from self-hosted files to avoid CORS issues
             const baseURL = '/libs';
-=======
-            // Load FFmpeg core from CDN - using multi-threaded version
-            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm';
->>>>>>> main
 
             // Convert URLs to blob URLs to avoid CORS issues with Workers
             const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
@@ -74,10 +69,6 @@ class FlipFile {
             throw new Error(`Failed to load audio conversion library: ${error.message}`);
         }
     }
-<<<<<<< claude/flipfile-converter-app-U96DJ
-=======
-
->>>>>>> main
     setupModal() {
         const modal = document.getElementById('customModal');
         const closeBtn = document.querySelector('.modal-close');
@@ -592,63 +583,6 @@ class FlipFile {
 
     // MEDIA CONVERSION (Audio/Video)
     async convertMedia(file, format) {
-<<<<<<< claude/flipfile-converter-app-U96DJ
-        try {
-            // Load FFmpeg if not already loaded
-            await this.loadFFmpeg();
-
-            // Get file extension for input format
-            const inputExt = file.name.split('.').pop().toLowerCase();
-            const outputExt = format.toLowerCase();
-
-            // Write input file to FFmpeg virtual filesystem
-            const inputFileName = `input.${inputExt}`;
-            const outputFileName = `output.${outputExt}`;
-
-            await this.ffmpeg.writeFile(inputFileName, await this.fetchFile(file));
-
-            // Run FFmpeg conversion
-            await this.ffmpeg.exec(['-i', inputFileName, outputFileName]);
-
-            // Read output file
-            const data = await this.ffmpeg.readFile(outputFileName);
-
-            // Clean up
-            await this.ffmpeg.deleteFile(inputFileName);
-            await this.ffmpeg.deleteFile(outputFileName);
-
-            // Create blob from output data
-            const mimeTypes = {
-                'mp3': 'audio/mpeg',
-                'wav': 'audio/wav',
-                'ogg': 'audio/ogg',
-                'm4a': 'audio/mp4',
-                'aac': 'audio/aac',
-                'mp4': 'video/mp4',
-                'webm': 'video/webm',
-                'avi': 'video/x-msvideo',
-                'gif': 'image/gif'
-            };
-
-            const blob = new Blob([data.buffer], { type: mimeTypes[outputExt] || 'application/octet-stream' });
-            const filename = this.changeFileExtension(file.name, format);
-
-            return { blob, filename };
-        } catch (error) {
-            console.error('Media conversion error:', error);
-            throw error;
-        }
-    }
-
-    async fetchFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                resolve(new Uint8Array(e.target.result));
-            };
-            reader.onerror = reject;
-            reader.readAsArrayBuffer(file);
-=======
         // Load FFmpeg if not already loaded
         if (!this.ffmpegLoaded) {
             await this.loadFFmpeg();
@@ -726,7 +660,6 @@ class FlipFile {
                 console.error('Media conversion error:', error);
                 reject(new Error(`Audio/video conversion failed: ${error.message}`));
             }
->>>>>>> main
         });
     }
 
