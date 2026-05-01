@@ -48,8 +48,13 @@ class FlipFile {
                 console.log('FFmpeg:', message);
             });
 
+<<<<<<< claude/flipfile-converter-app-U96DJ
             // Load FFmpeg core from self-hosted files to avoid CORS issues
             const baseURL = '/libs';
+=======
+            // Load FFmpeg core from CDN - using multi-threaded version
+            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm';
+>>>>>>> main
 
             // Convert URLs to blob URLs to avoid CORS issues with Workers
             const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
@@ -69,6 +74,10 @@ class FlipFile {
             throw new Error(`Failed to load audio conversion library: ${error.message}`);
         }
     }
+<<<<<<< claude/flipfile-converter-app-U96DJ
+=======
+
+>>>>>>> main
     setupModal() {
         const modal = document.getElementById('customModal');
         const closeBtn = document.querySelector('.modal-close');
@@ -583,6 +592,7 @@ class FlipFile {
 
     // MEDIA CONVERSION (Audio/Video)
     async convertMedia(file, format) {
+<<<<<<< claude/flipfile-converter-app-U96DJ
         try {
             // Load FFmpeg if not already loaded
             await this.loadFFmpeg();
@@ -638,6 +648,85 @@ class FlipFile {
             };
             reader.onerror = reject;
             reader.readAsArrayBuffer(file);
+=======
+        // Load FFmpeg if not already loaded
+        if (!this.ffmpegLoaded) {
+            await this.loadFFmpeg();
+        }
+
+        const { fetchFile } = FFmpegUtil;
+
+        return new Promise(async (resolve, reject) => {
+            try {
+                const inputName = 'input.' + file.name.split('.').pop();
+                const outputExt = format.toLowerCase();
+                const outputName = 'output.' + outputExt;
+
+                // Write input file to FFmpeg virtual filesystem
+                await this.ffmpeg.writeFile(inputName, await fetchFile(file));
+
+                // Run FFmpeg conversion
+                // Use appropriate codec settings for each format
+                let ffmpegArgs = ['-i', inputName];
+
+                switch(format) {
+                    case 'MP3':
+                        ffmpegArgs.push('-codec:a', 'libmp3lame', '-b:a', '192k');
+                        break;
+                    case 'WAV':
+                        ffmpegArgs.push('-codec:a', 'pcm_s16le');
+                        break;
+                    case 'OGG':
+                        ffmpegArgs.push('-codec:a', 'libvorbis', '-q:a', '4');
+                        break;
+                    case 'M4A':
+                        ffmpegArgs.push('-codec:a', 'aac', '-b:a', '192k');
+                        break;
+                    case 'AAC':
+                        ffmpegArgs.push('-codec:a', 'aac', '-b:a', '192k');
+                        break;
+                    case 'MP4':
+                        ffmpegArgs.push('-codec:v', 'libx264', '-codec:a', 'aac');
+                        break;
+                    case 'WebM':
+                        ffmpegArgs.push('-codec:v', 'libvpx', '-codec:a', 'libvorbis');
+                        break;
+                    case 'GIF':
+                        // For video to GIF conversion
+                        ffmpegArgs.push('-vf', 'fps=10,scale=320:-1:flags=lanczos', '-loop', '0');
+                        break;
+                    default:
+                        ffmpegArgs.push('-codec:a', 'copy');
+                }
+
+                ffmpegArgs.push(outputName);
+
+                // Execute FFmpeg command
+                await this.ffmpeg.exec(ffmpegArgs);
+
+                // Read output file
+                const data = await this.ffmpeg.readFile(outputName);
+
+                // Create blob from output
+                const mimeType = this.getMimeType(format);
+                const blob = new Blob([data.buffer], { type: mimeType });
+                const filename = this.changeFileExtension(file.name, format);
+
+                // Clean up FFmpeg virtual filesystem
+                try {
+                    await this.ffmpeg.deleteFile(inputName);
+                    await this.ffmpeg.deleteFile(outputName);
+                } catch (cleanupError) {
+                    console.warn('FFmpeg cleanup warning:', cleanupError);
+                }
+
+                resolve({ blob, filename });
+
+            } catch (error) {
+                console.error('Media conversion error:', error);
+                reject(new Error(`Audio/video conversion failed: ${error.message}`));
+            }
+>>>>>>> main
         });
     }
 

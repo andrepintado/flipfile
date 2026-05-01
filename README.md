@@ -23,9 +23,10 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 - **Input:** TXT, JSON, HTML, MD, DOC, DOCX
 - **Output:** TXT, JSON, HTML, MD
 
-### Audio/Video (Coming Soon)
-- MP3, WAV, OGG, M4A
-- MP4, WebM, AVI, GIF
+### Audio/Video
+- **Input:** MP3, WAV, OGG, M4A, AAC, MP4, WebM, AVI
+- **Output:** MP3, WAV, OGG, M4A, AAC, MP4, WebM, GIF
+- **Note:** Audio/video conversion requires specific server headers. Works locally or on Netlify/Vercel/Cloudflare Pages, but **not on GitHub Pages**.
 
 ## 🛠️ Technology Stack
 
@@ -34,6 +35,7 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 - **Mammoth.js** - For DOC/DOCX conversion
 - **jsPDF** - For PDF generation
 - **PDF.js** - For PDF reading/conversion
+<<<<<<< claude/flipfile-converter-app-U96DJ
 - **heic2any** - For HEIC/HEIF (iPhone photos) decoding
 - **FFmpeg.wasm** - For audio/video conversion
 - **Web APIs** - File, Blob, and URL APIs
@@ -76,6 +78,10 @@ Audio/video conversion requires `Cross-Origin-Embedder-Policy` and `Cross-Origin
 - ✅ **Vercel** - Supports custom headers
 - ✅ **Cloudflare Pages** - Supports custom headers
 - ✅ **Local Development** - Use the provided `server.py` script
+=======
+- **FFmpeg.wasm** - For audio/video conversion
+- **Web APIs** - File, Blob, and URL APIs
+>>>>>>> main
 
 ## 🔐 Privacy & Security
 
