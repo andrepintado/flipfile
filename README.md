@@ -16,7 +16,7 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 ## 🎯 Supported Conversions
 
 ### Images
-- **Input:** PNG, JPG, JPEG, GIF, BMP, WebP, and more
+- **Input:** PNG, JPG, JPEG, GIF, BMP, WebP, HEIC/HEIF (iPhone photos), and more
 - **Output:** PNG, JPG, WebP, GIF, BMP, ICO
 
 ### Documents
@@ -35,8 +35,53 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 - **Mammoth.js** - For DOC/DOCX conversion
 - **jsPDF** - For PDF generation
 - **PDF.js** - For PDF reading/conversion
+<<<<<<< claude/flipfile-converter-app-U96DJ
+- **heic2any** - For HEIC/HEIF (iPhone photos) decoding
 - **FFmpeg.wasm** - For audio/video conversion
 - **Web APIs** - File, Blob, and URL APIs
+
+## 🚀 Setup for Audio/Video Conversion
+
+To enable audio and video conversion features, you need to download the FFmpeg core files:
+
+### Quick Setup
+
+Run the provided download script:
+
+```bash
+./download-ffmpeg-core.sh
+```
+
+This will download the required FFmpeg core files (`ffmpeg-core.js`, `ffmpeg-core.wasm`, `ffmpeg-core.worker.js`) to the `libs/` directory.
+
+### Manual Setup
+
+Alternatively, download the files manually:
+
+```bash
+cd libs
+curl -L -o ffmpeg-core.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.js"
+curl -L -o ffmpeg-core.wasm "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.wasm"
+curl -L -o ffmpeg-core.worker.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.worker.js"
+```
+
+### Why Self-Host?
+
+Self-hosting FFmpeg files avoids CORS issues when loading Web Workers from external CDNs.
+
+### Deployment Notes
+
+Audio/video conversion requires `Cross-Origin-Embedder-Policy` and `Cross-Origin-Opener-Policy` headers:
+
+- ❌ **GitHub Pages** - Does not support required headers
+- ✅ **Netlify** - Supports custom headers
+- ✅ **Vercel** - Supports custom headers
+- ✅ **Cloudflare Pages** - Supports custom headers
+- ✅ **Local Development** - Use the provided `server.py` script
+=======
+- **FFmpeg.wasm** - For audio/video conversion
+- **Web APIs** - File, Blob, and URL APIs
+>>>>>>> main
 
 ## 🔐 Privacy & Security
 
