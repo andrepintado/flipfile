@@ -1,147 +1,41 @@
 # FlipFile 🔄
 
-**Fast, Private, Browser-Based File Converter**
+**Convert files instantly privately in your browser**
 
-Convert files instantly privately in your browser. No uploads, no storage, complete privacy. We use minimal Google Analytics tracking to understand how users interact with the app.
+🌐 **Live:** [flipfile.tools](https://flipfile.tools)
 
-🌐 **Live at:** [flipfile.tools](https://flipfile.tools)
+## Features
 
-## ✨ Features
+- 🔒 **100% Private** - Files never leave your browser
+- ⚡ **Fast** - Instant conversion
+- 🆓 **Free** - No limits, no signup
+- 📱 **Responsive** - Works on all devices
 
-- **🔒 100% Private** - All conversions happen locally in your browser
-- **⚡ Fast** - Instant conversion without server round-trips
-- **🆓 Free** - No limits, no signup
-- **📱 Responsive** - Works on desktop, tablet, and mobile
+## Supported Formats
 
-## 🎯 Supported Conversions
+**Images:** PNG, JPG, WebP, GIF, BMP, HEIC/HEIF (iPhone), ICO  
+**Documents:** TXT, JSON, HTML, MD, DOC/DOCX, PDF  
+**Audio/Video:** MP3, WAV, OGG, M4A, AAC, MP4, WebM, AVI
 
-### Images
-- **Input:** PNG, JPG, JPEG, GIF, BMP, WebP, HEIC/HEIF (iPhone photos), and more
-- **Output:** PNG, JPG, WebP, GIF, BMP, ICO
+See the [live site](https://flipfile.tools) for complete list of input/output combinations.
 
-### Documents
-- **Input:** TXT, JSON, HTML, MD, DOC, DOCX
-- **Output:** TXT, JSON, HTML, MD
+## Development
 
-### Audio/Video (Coming Soon)
-- MP3, WAV, OGG, M4A
-- MP4, WebM, AVI, GIF
-
-## 🛠️ Technology Stack
-
-- **Pure HTML/CSS/JavaScript** - No frameworks needed
-- **Canvas API** - For image manipulation
-- **Mammoth.js** - For DOC/DOCX conversion
-- **jsPDF** - For PDF generation
-- **PDF.js** - For PDF reading/conversion
-- **heic2any** - For HEIC/HEIF (iPhone photos) decoding
-- **FFmpeg.wasm** - For audio/video conversion
-- **Web APIs** - File, Blob, and URL APIs
-
-## 🚀 Setup for Audio/Video Conversion
-
-To enable audio and video conversion features, you need to download the FFmpeg core files:
-
-### Quick Setup
-
-Run the provided download script:
+To enable audio/video conversion locally:
 
 ```bash
 ./download-ffmpeg-core.sh
 ```
 
-This will download the required FFmpeg core files (`ffmpeg-core.js`, `ffmpeg-core.wasm`, `ffmpeg-core.worker.js`) to the `libs/` directory.
+**Note:** Audio/video conversion requires COEP/COOP headers (not supported on GitHub Pages). Deploy to Netlify, Vercel, or Cloudflare Pages.
 
-### Manual Setup
+## Tech Stack
 
-Alternatively, download the files manually:
+Pure HTML/CSS/JavaScript • Canvas API • Mammoth.js • jsPDF • PDF.js • heic2any • FFmpeg.wasm
 
-```bash
-cd libs
-curl -L -o ffmpeg-core.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.js"
-curl -L -o ffmpeg-core.wasm "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.wasm"
-curl -L -o ffmpeg-core.worker.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.worker.js"
-```
+## License
 
-### Why Self-Host?
-
-Self-hosting FFmpeg files avoids CORS issues when loading Web Workers from external CDNs.
-
-### Deployment Notes
-
-Audio/video conversion requires `Cross-Origin-Embedder-Policy` and `Cross-Origin-Opener-Policy` headers:
-
-- ❌ **GitHub Pages** - Does not support required headers
-- ✅ **Netlify** - Supports custom headers
-- ✅ **Vercel** - Supports custom headers
-- ✅ **Cloudflare Pages** - Supports custom headers
-- ✅ **Local Development** - Use the provided `server.py` script
-
-## 🔐 Privacy & Security
-
-FlipFile is designed with privacy as the #1 priority:
-
-- ✅ **No server uploads** - Files never leave your device
-- ✅ **Minimal tracking** - Only Google Analytics for usage insights
-- ✅ **No storage** - Files aren't saved anywhere
-- ✅ **Open source** - Fully transparent code
-- ✅ **Offline capable** - Works without internet (after first load)
-
-## 🗺️ Roadmap
-
-- [x] Image conversion (PNG, JPG, WebP, GIF, BMP, ICO)
-- [x] Text/document conversion (TXT, JSON, HTML, MD)
-- [x] DOC/DOCX conversion (TXT, HTML, MD)
-- [x] Batch conversion support
-- [ ] Audio conversion (MP3, WAV, OGG, M4A) using FFmpeg.wasm
-- [ ] Video conversion (MP4, WebM, AVI) using FFmpeg.wasm
-- [ ] PDF operations (split, merge, compress)
-- [ ] Archive operations (ZIP, RAR)
-- [ ] Image editing tools (resize, crop, filters)
-- [ ] PWA support for offline usage
-- [ ] Dark mode
-- [ ] Multiple language support
-
-## 📋 Supported File Extensions
-
-### Images
-**Input formats:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.heic`, `.heif`, `.ico`  
-**Output formats:** `.png`, `.jpg`, `.webp`, `.gif`, `.bmp`, `.ico`, `.pdf`
-
-### Documents
-**Input formats:** `.txt`, `.json`, `.html`, `.md`, `.doc`, `.docx`  
-**Output formats:** `.txt`, `.json`, `.html`, `.md`, `.latex`, `.pdf`
-
-### PDF
-**Input formats:** `.pdf`  
-**Output formats:** `.png`, `.jpg`, `.txt`
-
-### Audio (Requires FFmpeg Setup)
-**Input formats:** `.mp3`, `.wav`, `.ogg`, `.m4a`, `.aac`  
-**Output formats:** `.mp3`, `.wav`, `.ogg`, `.m4a`, `.aac`
-
-### Video (Requires FFmpeg Setup)
-**Input formats:** `.mp4`, `.webm`, `.avi`  
-**Output formats:** `.mp4`, `.webm`, `.avi`, `.gif`
-
-**Note:** HEIC/HEIF are Apple's iPhone photo formats and are automatically decoded for conversion.
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to:
-
-- Report bugs
-- Suggest new features
-- Submit pull requests
-- Improve documentation
-
-## 📄 License
-
-MIT License - Feel free to use this project for any purpose.
-
-## 🙏 Credits
-
-Built with love for privacy and simplicity.
+MIT License
 
 ---
 
