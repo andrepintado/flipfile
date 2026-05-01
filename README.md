@@ -16,7 +16,7 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 ## 🎯 Supported Conversions
 
 ### Images
-- **Input:** PNG, JPG, JPEG, GIF, BMP, WebP, and more
+- **Input:** PNG, JPG, JPEG, GIF, BMP, WebP, HEIC/HEIF (iPhone photos), and more
 - **Output:** PNG, JPG, WebP, GIF, BMP, ICO
 
 ### Documents
@@ -32,8 +32,11 @@ Convert files instantly in your browser. No uploads, no storage, complete privac
 - **Pure HTML/CSS/JavaScript** - No frameworks needed
 - **Canvas API** - For image manipulation
 - **Mammoth.js** - For DOC/DOCX conversion
+- **jsPDF** - For PDF generation
+- **PDF.js** - For PDF reading/conversion
+- **heic2any** - For HEIC/HEIF (iPhone photos) decoding
+- **FFmpeg.wasm** - For audio/video conversion
 - **Web APIs** - File, Blob, and URL APIs
-- **Future:** FFmpeg.wasm for audio/video conversion
 
 ## 🚀 Setup for Audio/Video Conversion
 

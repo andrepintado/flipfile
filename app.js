@@ -500,7 +500,42 @@ class FlipFile {
     }
 
     // IMAGE CONVERSION
+    isHEICFile(file) {
+        const fileName = file.name.toLowerCase();
+        const mimeType = file.type.toLowerCase();
+        return fileName.endsWith('.heic') ||
+               fileName.endsWith('.heif') ||
+               mimeType === 'image/heic' ||
+               mimeType === 'image/heif';
+    }
+
+    async decodeHEIC(file) {
+        try {
+            // heic2any converts HEIC to PNG/JPEG blob
+            const convertedBlob = await heic2any({
+                blob: file,
+                toType: 'image/jpeg',
+                quality: 0.95
+            });
+
+            // heic2any can return an array of blobs for multi-image HEIC
+            // We'll just use the first one
+            const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+
+            // Create a new File object with the original name but decoded content
+            return new File([blob], file.name, { type: 'image/jpeg' });
+        } catch (error) {
+            console.error('HEIC decoding error:', error);
+            throw new Error('Failed to decode HEIC/HEIF image. The file may be corrupted.');
+        }
+    }
+
     async convertImage(file, format) {
+        // Decode HEIC/HEIF files first
+        if (this.isHEICFile(file)) {
+            file = await this.decodeHEIC(file);
+        }
+
         return new Promise((resolve, reject) => {
             const img = new Image();
             const reader = new FileReader();
@@ -977,6 +1012,8 @@ class FlipFile {
             'image/gif': 'GIF',
             'image/bmp': 'BMP',
             'image/x-icon': 'ICO',
+            'image/heic': 'HEIC',
+            'image/heif': 'HEIC',
             'audio/mpeg': 'MP3',
             'audio/wav': 'WAV',
             'audio/ogg': 'OGG',
@@ -1021,6 +1058,10 @@ class FlipFile {
     // POST-PROCESSING
     async applyPostProcessing(blob, postProcess, mimeType, filename) {
         if (mimeType.startsWith('image/')) {
+            // Decode HEIC/HEIF files first if needed
+            if (this.isHEICFile(blob)) {
+                blob = await this.decodeHEIC(blob);
+            }
             return await this.applyImagePostProcessing(blob, postProcess, filename);
         }
         // Document post-processing would go here
