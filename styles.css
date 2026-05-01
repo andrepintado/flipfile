@@ -133,7 +133,7 @@ header {
 
 /* Upload Area */
 .upload-area {
-    background: var(--white);
+    background: var(--bg);
     border: 2px dashed var(--border);
     border-radius: 16px;
     padding: 80px 40px;
@@ -225,13 +225,18 @@ header {
 .bulk-format-selector select {
     flex: 1;
     padding: 10px 14px;
-    background: var(--white);
+    background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 0.95rem;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.bulk-format-selector select option {
+    background: var(--bg);
+    color: var(--text);
 }
 
 .bulk-format-selector select:hover {
@@ -258,7 +263,7 @@ header {
     align-items: center;
     gap: 16px;
     padding: 20px;
-    background: var(--white);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 12px;
     transition: all 0.2s ease;
@@ -278,7 +283,7 @@ header {
 }
 
 .file-item.completed {
-    background: rgba(16, 185, 129, 0.05);
+    background: var(--bg-secondary);
     border-color: var(--success);
 }
 
@@ -315,7 +320,7 @@ header {
 .format-select,
 .postprocess-select {
     padding: 10px 14px;
-    background: var(--white);
+    background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -328,6 +333,12 @@ header {
 .format-select:hover,
 .postprocess-select:hover {
     border-color: var(--primary);
+}
+
+.format-select option,
+.postprocess-select option {
+    background: var(--bg);
+    color: var(--text);
 }
 
 .format-select:focus,
@@ -481,7 +492,7 @@ header {
 
 .reset-btn {
     padding: 14px 24px;
-    background: var(--white);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 10px;
     font-size: 0.95rem;
@@ -514,7 +525,7 @@ footer {
     align-items: flex-start;
     gap: 16px;
     padding: 24px;
-    background: var(--white);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 12px;
 }
@@ -538,7 +549,7 @@ footer {
 }
 
 .privacy-badge {
-    background: var(--white);
+    background: var(--bg);
     border: 1px solid var(--border);
     padding: 20px 30px;
     border-radius: 12px;
@@ -560,7 +571,7 @@ footer {
 .supported-formats-section {
     margin-top: 40px;
     padding: 32px;
-    background: var(--white);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 12px;
 }
@@ -635,7 +646,7 @@ footer {
 }
 
 .modal-content {
-    background: var(--white);
+    background: var(--bg);
     border-radius: 16px;
     max-width: 500px;
     width: 90%;
