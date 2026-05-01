@@ -263,7 +263,7 @@ main {
 
 .bulk-format-selector label {
     font-weight: 600;
-    color: var(--white);
+    color: var(--primary-light);
     white-space: nowrap;
 }
 
