@@ -1,53 +1,42 @@
-# FFmpeg Libraries Directory
+# Libs Directory
 
-This directory contains the self-hosted FFmpeg libraries needed for audio/video conversion in FlipFile.
+This directory contains self-hosted JavaScript libraries used by FlipFile.
 
-## Current Files
+## Required Files
 
-- `ffmpeg.js` - FFmpeg.wasm wrapper library
-- `index.js` - FFmpeg utility library (includes toBlobURL)
-- `814.ffmpeg.js` - FFmpeg worker chunk
+- `lame.min.js` - lamejs MP3 encoder (pure JavaScript, no SharedArrayBuffer required)
 
-## Required Files (Not Yet Downloaded)
+## Setup
 
-To enable audio/video conversion, you need to download the FFmpeg core files:
-
-1. `ffmpeg-core.js` - Main FFmpeg core JavaScript
-2. `ffmpeg-core.wasm` - FFmpeg WebAssembly binary
-3. `ffmpeg-core.worker.js` - FFmpeg Web Worker
-
-## How to Download
-
-### Option 1: Run the download script (Recommended)
-
-From the project root directory, run:
+Run the download script from the project root:
 
 ```bash
-./download-ffmpeg-core.sh
+./download-libs.sh
 ```
 
-### Option 2: Manual download
-
-Download these files from the CDN and place them in this directory:
+Or download manually:
 
 ```bash
-cd libs
-curl -L -o ffmpeg-core.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.js"
-curl -L -o ffmpeg-core.wasm "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.wasm"
-curl -L -o ffmpeg-core.worker.js "https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.worker.js"
+curl -L -o lame.min.js "https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/lame.all.js"
 ```
 
 ## Why Self-Host?
 
-Self-hosting these files avoids CORS (Cross-Origin Resource Sharing) issues that occur when loading Web Workers from external CDNs. By serving all files from the same origin (your GitHub Pages domain), the browser allows the Workers to load without security restrictions.
+Self-hosting libraries:
+- Avoids CORS issues on GitHub Pages
+- Ensures privacy (no third-party CDN tracking)
+- Works offline once loaded
+- More reliable (no CDN downtime)
 
-## Note
+## Audio Conversion
 
-Audio/video conversion requires proper COEP and COOP headers, which are not supported by GitHub Pages. For full audio/video conversion support, deploy to:
+FlipFile uses Web Audio API + lamejs for audio conversion. This works on **GitHub Pages** without any special headers:
 
-- Netlify
-- Vercel
-- Cloudflare Pages
-- Or run locally with a proper development server
+- **Input formats**: MP3, WAV, OGG, M4A, AAC (any format browser can decode)
+- **Output formats**: MP3, WAV
 
-For local development, you can use the provided `server.py` script.
+## Why Not FFmpeg.wasm?
+
+FFmpeg.wasm requires `SharedArrayBuffer`, which requires `Cross-Origin-Embedder-Policy` and `Cross-Origin-Opener-Policy` headers. **GitHub Pages does not support these headers**, so FFmpeg.wasm cannot work there.
+
+For full video conversion support, you'd need to deploy to Netlify, Vercel, or Cloudflare Pages.

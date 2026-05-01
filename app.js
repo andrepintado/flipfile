@@ -5,8 +5,7 @@ class FlipFile {
     constructor() {
         this.files = new Map(); // Store files with unique IDs
         this.fileCounter = 0;
-        this.ffmpeg = null;
-        this.ffmpegLoaded = false;
+        this.audioContext = null;
         this.init();
     }
 
@@ -15,60 +14,17 @@ class FlipFile {
         this.setupModal();
     }
 
-    async loadFFmpeg() {
-        if (this.ffmpegLoaded) return;
-
-        try {
-            // Check if running from file:// protocol
-            if (window.location.protocol === 'file:') {
-                throw new Error('Audio conversion requires the site to be served over HTTP/HTTPS. Please use a local server (e.g., "python -m http.server" or "npx serve") instead of opening the HTML file directly.');
+    getAudioContext() {
+        if (!this.audioContext) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                throw new Error('Web Audio API is not supported in this browser');
             }
-
-            // Check if SharedArrayBuffer is available (requires proper COEP/COOP headers)
-            if (typeof SharedArrayBuffer === 'undefined') {
-                throw new Error('Audio/video conversion requires Cross-Origin-Embedder-Policy and Cross-Origin-Opener-Policy headers to be set. GitHub Pages does not support these headers. Please deploy to Netlify, Vercel, or Cloudflare Pages for audio/video conversion support, or run locally with the provided server.py.');
-            }
-
-            // Check if FFmpeg libraries are available
-            if (typeof FFmpegWASM === 'undefined' || typeof FFmpegUtil === 'undefined') {
-                console.error('FFmpeg libraries not found. Available:', {
-                    FFmpegWASM: typeof FFmpegWASM,
-                    FFmpegUtil: typeof FFmpegUtil
-                });
-                throw new Error('FFmpeg libraries not loaded. Please refresh the page.');
-            }
-
-            const { FFmpeg } = FFmpegWASM;
-            const { toBlobURL } = FFmpegUtil;
-
-            this.ffmpeg = new FFmpeg();
-
-            // Add progress logging
-            this.ffmpeg.on('log', ({ message }) => {
-                console.log('FFmpeg:', message);
-            });
-
-            // Load FFmpeg core from self-hosted files to avoid CORS issues
-            const baseURL = '/libs';
-
-            // Convert URLs to blob URLs to avoid CORS issues with Workers
-            const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-            const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-            const workerURL = await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript');
-
-            await this.ffmpeg.load({
-                coreURL: coreURL,
-                wasmURL: wasmURL,
-                workerURL: workerURL
-            });
-
-            this.ffmpegLoaded = true;
-            console.log('FFmpeg loaded successfully');
-        } catch (error) {
-            console.error('FFmpeg loading error:', error);
-            throw new Error(`Failed to load audio conversion library: ${error.message}`);
+            this.audioContext = new AudioContextClass();
         }
+        return this.audioContext;
     }
+
     setupModal() {
         const modal = document.getElementById('customModal');
         const closeBtn = document.querySelector('.modal-close');
@@ -188,10 +144,13 @@ class FlipFile {
         const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB limit
         const validFiles = [];
         const oversizedFiles = [];
+        const videoFiles = [];
 
         fileList.forEach(file => {
             if (file.size > MAX_FILE_SIZE) {
                 oversizedFiles.push(`${file.name} (${this.formatFileSize(file.size)})`);
+            } else if (file.type.startsWith('video/')) {
+                videoFiles.push(file.name);
             } else {
                 validFiles.push(file);
             }
@@ -200,6 +159,11 @@ class FlipFile {
         // Show modal for oversized files
         if (oversizedFiles.length > 0) {
             this.showModal(`The following files exceed the 30MB limit and were not added:\n\n${oversizedFiles.join('\n')}\n\nPlease use smaller files for browser-based conversion.`);
+        }
+
+        // Show modal for unsupported video files
+        if (videoFiles.length > 0) {
+            this.showModal(`Video conversion is not supported in the browser:\n\n${videoFiles.join('\n')}\n\nPlease use a desktop tool like HandBrake (handbrake.fr) for video conversion.`);
         }
 
         // Add valid files
@@ -581,86 +545,138 @@ class FlipFile {
         });
     }
 
-    // MEDIA CONVERSION (Audio/Video)
+    // AUDIO CONVERSION (using Web Audio API + lamejs)
+    // Works on GitHub Pages - no SharedArrayBuffer or COEP/COOP headers required
     async convertMedia(file, format) {
-        // Load FFmpeg if not already loaded
-        if (!this.ffmpegLoaded) {
-            await this.loadFFmpeg();
+        // Video conversion is not supported (would require FFmpeg.wasm with COEP/COOP headers)
+        const videoFormats = ['MP4', 'WebM', 'AVI', 'GIF'];
+        if (videoFormats.includes(format) || file.type.startsWith('video/')) {
+            throw new Error('Video conversion is not supported in the browser. Please use a desktop tool like HandBrake or FFmpeg for video conversion.');
         }
 
-        const { fetchFile } = FFmpegUtil;
+        // Audio formats that are supported for output
+        const supportedAudioFormats = ['MP3', 'WAV'];
+        if (!supportedAudioFormats.includes(format)) {
+            throw new Error(`Output format "${format}" is not supported. Available output formats: ${supportedAudioFormats.join(', ')}.`);
+        }
 
-        return new Promise(async (resolve, reject) => {
-            try {
-                const inputName = 'input.' + file.name.split('.').pop();
-                const outputExt = format.toLowerCase();
-                const outputName = 'output.' + outputExt;
+        try {
+            // Decode audio using Web Audio API (handles MP3, WAV, OGG, M4A, AAC natively)
+            const arrayBuffer = await file.arrayBuffer();
+            const audioContext = this.getAudioContext();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-                // Write input file to FFmpeg virtual filesystem
-                await this.ffmpeg.writeFile(inputName, await fetchFile(file));
-
-                // Run FFmpeg conversion
-                // Use appropriate codec settings for each format
-                let ffmpegArgs = ['-i', inputName];
-
-                switch(format) {
-                    case 'MP3':
-                        ffmpegArgs.push('-codec:a', 'libmp3lame', '-b:a', '192k');
-                        break;
-                    case 'WAV':
-                        ffmpegArgs.push('-codec:a', 'pcm_s16le');
-                        break;
-                    case 'OGG':
-                        ffmpegArgs.push('-codec:a', 'libvorbis', '-q:a', '4');
-                        break;
-                    case 'M4A':
-                        ffmpegArgs.push('-codec:a', 'aac', '-b:a', '192k');
-                        break;
-                    case 'AAC':
-                        ffmpegArgs.push('-codec:a', 'aac', '-b:a', '192k');
-                        break;
-                    case 'MP4':
-                        ffmpegArgs.push('-codec:v', 'libx264', '-codec:a', 'aac');
-                        break;
-                    case 'WebM':
-                        ffmpegArgs.push('-codec:v', 'libvpx', '-codec:a', 'libvorbis');
-                        break;
-                    case 'GIF':
-                        // For video to GIF conversion
-                        ffmpegArgs.push('-vf', 'fps=10,scale=320:-1:flags=lanczos', '-loop', '0');
-                        break;
-                    default:
-                        ffmpegArgs.push('-codec:a', 'copy');
+            let blob;
+            if (format === 'WAV') {
+                blob = this.encodeWAV(audioBuffer);
+            } else if (format === 'MP3') {
+                if (typeof lamejs === 'undefined') {
+                    throw new Error('MP3 encoder (lamejs) is not loaded. Please refresh the page.');
                 }
-
-                ffmpegArgs.push(outputName);
-
-                // Execute FFmpeg command
-                await this.ffmpeg.exec(ffmpegArgs);
-
-                // Read output file
-                const data = await this.ffmpeg.readFile(outputName);
-
-                // Create blob from output
-                const mimeType = this.getMimeType(format);
-                const blob = new Blob([data.buffer], { type: mimeType });
-                const filename = this.changeFileExtension(file.name, format);
-
-                // Clean up FFmpeg virtual filesystem
-                try {
-                    await this.ffmpeg.deleteFile(inputName);
-                    await this.ffmpeg.deleteFile(outputName);
-                } catch (cleanupError) {
-                    console.warn('FFmpeg cleanup warning:', cleanupError);
-                }
-
-                resolve({ blob, filename });
-
-            } catch (error) {
-                console.error('Media conversion error:', error);
-                reject(new Error(`Audio/video conversion failed: ${error.message}`));
+                blob = this.encodeMP3(audioBuffer);
             }
-        });
+
+            const filename = this.changeFileExtension(file.name, format);
+            return { blob, filename };
+        } catch (error) {
+            console.error('Audio conversion error:', error);
+            if (error.name === 'EncodingError' || error.message.includes('decode')) {
+                throw new Error(`Could not decode audio file. The format may not be supported by your browser.`);
+            }
+            throw new Error(`Audio conversion failed: ${error.message}`);
+        }
+    }
+
+    // Encode AudioBuffer to WAV format (16-bit PCM)
+    encodeWAV(audioBuffer) {
+        const numChannels = audioBuffer.numberOfChannels;
+        const sampleRate = audioBuffer.sampleRate;
+        const length = audioBuffer.length * numChannels * 2 + 44;
+        const arrayBuffer = new ArrayBuffer(length);
+        const view = new DataView(arrayBuffer);
+
+        // Write WAV header
+        const writeString = (offset, str) => {
+            for (let i = 0; i < str.length; i++) {
+                view.setUint8(offset + i, str.charCodeAt(i));
+            }
+        };
+
+        writeString(0, 'RIFF');
+        view.setUint32(4, length - 8, true);
+        writeString(8, 'WAVE');
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true);                    // Sub-chunk size
+        view.setUint16(20, 1, true);                     // PCM format
+        view.setUint16(22, numChannels, true);           // Number of channels
+        view.setUint32(24, sampleRate, true);            // Sample rate
+        view.setUint32(28, sampleRate * numChannels * 2, true); // Byte rate
+        view.setUint16(32, numChannels * 2, true);       // Block align
+        view.setUint16(34, 16, true);                    // Bits per sample
+        writeString(36, 'data');
+        view.setUint32(40, length - 44, true);
+
+        // Write interleaved audio samples
+        let offset = 44;
+        const channels = [];
+        for (let i = 0; i < numChannels; i++) {
+            channels.push(audioBuffer.getChannelData(i));
+        }
+
+        for (let i = 0; i < audioBuffer.length; i++) {
+            for (let channel = 0; channel < numChannels; channel++) {
+                const sample = Math.max(-1, Math.min(1, channels[channel][i]));
+                const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                view.setInt16(offset, intSample, true);
+                offset += 2;
+            }
+        }
+
+        return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+
+    // Encode AudioBuffer to MP3 using lamejs (192kbps)
+    encodeMP3(audioBuffer) {
+        const channels = audioBuffer.numberOfChannels;
+        const sampleRate = audioBuffer.sampleRate;
+        const bitrate = 192;
+
+        // Convert Float32Array samples to Int16Array
+        const floatTo16Bit = (input) => {
+            const output = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+                const sample = Math.max(-1, Math.min(1, input[i]));
+                output[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            }
+            return output;
+        };
+
+        const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitrate);
+        const samplesLeft = floatTo16Bit(audioBuffer.getChannelData(0));
+        const samplesRight = channels === 2 ? floatTo16Bit(audioBuffer.getChannelData(1)) : null;
+
+        const sampleBlockSize = 1152;
+        const mp3Data = [];
+
+        for (let i = 0; i < samplesLeft.length; i += sampleBlockSize) {
+            const leftChunk = samplesLeft.subarray(i, i + sampleBlockSize);
+            const rightChunk = samplesRight ? samplesRight.subarray(i, i + sampleBlockSize) : null;
+
+            const mp3buf = rightChunk
+                ? mp3encoder.encodeBuffer(leftChunk, rightChunk)
+                : mp3encoder.encodeBuffer(leftChunk);
+
+            if (mp3buf.length > 0) {
+                mp3Data.push(mp3buf);
+            }
+        }
+
+        const flushBuffer = mp3encoder.flush();
+        if (flushBuffer.length > 0) {
+            mp3Data.push(flushBuffer);
+        }
+
+        return new Blob(mp3Data, { type: 'audio/mp3' });
     }
 
     // TEXT/DOCUMENT CONVERSION
@@ -976,10 +992,12 @@ class FlipFile {
             return ['PNG', 'JPG', 'WebP', 'GIF', 'BMP', 'ICO', 'PDF'];
         }
         if (mimeType.startsWith('audio/')) {
-            return ['MP3', 'WAV', 'OGG', 'M4A', 'AAC'];
+            // Only MP3 and WAV are supported as output (works on GitHub Pages without SharedArrayBuffer)
+            return ['MP3', 'WAV'];
         }
         if (mimeType.startsWith('video/')) {
-            return ['MP4', 'WebM', 'GIF', 'AVI'];
+            // Video conversion not supported in browser without FFmpeg.wasm
+            return [];
         }
         if (mimeType.includes('pdf')) {
             return ['PNG', 'JPG', 'TXT'];

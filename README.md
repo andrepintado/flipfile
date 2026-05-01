@@ -15,23 +15,21 @@
 
 **Images:** PNG, JPG, WebP, GIF, BMP, HEIC/HEIF (iPhone), ICO  
 **Documents:** TXT, JSON, HTML, MD, DOC/DOCX, PDF  
-**Audio/Video:** MP3, WAV, OGG, M4A, AAC, MP4, WebM, AVI
+**Audio:** MP3, WAV, OGG, M4A, AAC (input) → MP3, WAV (output)
 
 See the [live site](https://flipfile.tools) for complete list of input/output combinations.
 
-## Development
+## Setup
 
-To enable audio/video conversion locally:
+To enable MP3 audio conversion, download lamejs:
 
 ```bash
-./download-ffmpeg-core.sh
+./download-libs.sh
 ```
-
-**Note:** Audio/video conversion requires COEP/COOP headers (not supported on GitHub Pages). Deploy to Netlify, Vercel, or Cloudflare Pages.
 
 ## Tech Stack
 
-Pure HTML/CSS/JavaScript • Canvas API • Mammoth.js • jsPDF • PDF.js • heic2any • FFmpeg.wasm
+Pure HTML/CSS/JavaScript • Canvas API • Web Audio API • Mammoth.js • jsPDF • PDF.js • heic2any • lamejs
 
 ## License
 
