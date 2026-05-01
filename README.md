@@ -2,7 +2,7 @@
 
 **Fast, Private, Browser-Based File Converter**
 
-Convert files instantly in your browser. No uploads, no storage, complete privacy. We use minimal Google Analytics tracking to understand how users interact with the app.
+Convert files instantly privately in your browser. No uploads, no storage, complete privacy. We use minimal Google Analytics tracking to understand how users interact with the app.
 
 🌐 **Live at:** [flipfile.tools](https://flipfile.tools)
 
@@ -101,6 +101,30 @@ FlipFile is designed with privacy as the #1 priority:
 - [ ] PWA support for offline usage
 - [ ] Dark mode
 - [ ] Multiple language support
+
+## 📋 Supported File Extensions
+
+### Images
+**Input formats:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.heic`, `.heif`, `.ico`  
+**Output formats:** `.png`, `.jpg`, `.webp`, `.gif`, `.bmp`, `.ico`, `.pdf`
+
+### Documents
+**Input formats:** `.txt`, `.json`, `.html`, `.md`, `.doc`, `.docx`  
+**Output formats:** `.txt`, `.json`, `.html`, `.md`, `.latex`, `.pdf`
+
+### PDF
+**Input formats:** `.pdf`  
+**Output formats:** `.png`, `.jpg`, `.txt`
+
+### Audio (Requires FFmpeg Setup)
+**Input formats:** `.mp3`, `.wav`, `.ogg`, `.m4a`, `.aac`  
+**Output formats:** `.mp3`, `.wav`, `.ogg`, `.m4a`, `.aac`
+
+### Video (Requires FFmpeg Setup)
+**Input formats:** `.mp4`, `.webm`, `.avi`  
+**Output formats:** `.mp4`, `.webm`, `.avi`, `.gif`
+
+**Note:** HEIC/HEIF are Apple's iPhone photo formats and are automatically decoded for conversion.
 
 ## 🤝 Contributing
 
