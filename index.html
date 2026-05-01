@@ -119,6 +119,7 @@
 
                 <div class="action-buttons">
                     <button class="convert-all-btn" id="convertAllBtn">Convert All</button>
+                    <button class="download-all-btn" id="downloadAllBtn">Download All</button>
                     <button class="convert-download-btn" id="convertDownloadBtn">Convert and Download All</button>
                     <button class="reset-btn" id="resetBtn">Add More Files</button>
                 </div>
@@ -215,6 +216,22 @@
             </div>
             <div class="modal-footer">
                 <button id="modalOkBtn" class="modal-btn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="confirm-modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmNoBtn" class="modal-btn modal-btn-secondary">No</button>
+                <button id="confirmYesBtn" class="modal-btn">Yes</button>
             </div>
         </div>
     </div>

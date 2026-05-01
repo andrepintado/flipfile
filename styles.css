@@ -263,7 +263,7 @@ main {
 
 .bulk-format-selector label {
     font-weight: 600;
-    color: var(--white);
+    color: var(--primary-light);
     white-space: nowrap;
 }
 
@@ -584,6 +584,7 @@ main {
 }
 
 .convert-all-btn,
+.download-all-btn,
 .convert-download-btn {
     padding: 16px;
     background: var(--primary);
@@ -597,6 +598,7 @@ main {
 }
 
 .convert-all-btn:hover,
+.download-all-btn:hover,
 .convert-download-btn:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
@@ -604,11 +606,13 @@ main {
 }
 
 .convert-all-btn:active,
+.download-all-btn:active,
 .convert-download-btn:active {
     transform: translateY(0);
 }
 
 .convert-all-btn:disabled,
+.download-all-btn:disabled,
 .convert-download-btn:disabled {
     background: var(--border);
     cursor: not-allowed;
@@ -616,6 +620,7 @@ main {
 }
 
 .convert-all-btn.loading,
+.download-all-btn.loading,
 .convert-download-btn.loading {
     background: var(--primary);
     position: relative;
@@ -623,6 +628,7 @@ main {
 }
 
 .convert-all-btn.loading::after,
+.download-all-btn.loading::after,
 .convert-download-btn.loading::after {
     content: '';
     position: absolute;
@@ -891,6 +897,17 @@ footer {
 
 .modal-btn:active {
     transform: translateY(0);
+}
+
+.modal-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes fadeIn {
