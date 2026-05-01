@@ -10,7 +10,7 @@ mkdir -p libs
 cd libs
 
 echo "Downloading lamejs (MP3 encoder)..."
-curl -L -o lame.min.js "https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/lame.all.js"
+curl -L -o lame.min.js "https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/dist/lamejs.iife.min.js"
 
 echo ""
 echo "Download complete!"

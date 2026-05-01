@@ -70,7 +70,7 @@
             script.onerror = function() {
                 console.warn('Self-hosted lamejs not found, falling back to CDN');
                 const cdnScript = document.createElement('script');
-                cdnScript.src = 'https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/lame.all.js';
+                cdnScript.src = 'https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/dist/lamejs.iife.min.js';
                 document.head.appendChild(cdnScript);
             };
             document.head.appendChild(script);
