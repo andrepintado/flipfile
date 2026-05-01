@@ -227,7 +227,7 @@ class FlipFile {
 
     handleFiles(fileList) {
         const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB limit
-        const MAX_FILES = 20; // Maximum number of files
+        const MAX_FILES = 30; // Maximum number of files
         const validFiles = [];
         const oversizedFiles = [];
         const videoFiles = [];
