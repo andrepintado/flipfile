@@ -12,6 +12,7 @@ class FlipFile {
     init() {
         this.setupEventListeners();
         this.setupModal();
+        this.setupConfirmModal();
     }
 
     getAudioContext() {
@@ -42,6 +43,31 @@ class FlipFile {
         });
     }
 
+    setupConfirmModal() {
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmCloseBtn = document.querySelector('.confirm-modal-close');
+
+        // Close confirm modal when clicking X
+        confirmCloseBtn.addEventListener('click', () => {
+            this.hideConfirmModal();
+            if (this.confirmResolve) {
+                this.confirmResolve(false);
+                this.confirmResolve = null;
+            }
+        });
+
+        // Close confirm modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === confirmModal) {
+                this.hideConfirmModal();
+                if (this.confirmResolve) {
+                    this.confirmResolve(false);
+                    this.confirmResolve = null;
+                }
+            }
+        });
+    }
+
     showModal(message) {
         const modal = document.getElementById('customModal');
         const modalMessage = document.getElementById('modalMessage');
@@ -52,6 +78,50 @@ class FlipFile {
     hideModal() {
         const modal = document.getElementById('customModal');
         modal.classList.remove('show');
+    }
+
+    showConfirm(message) {
+        return new Promise((resolve) => {
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmMessage = document.getElementById('confirmMessage');
+            const yesBtn = document.getElementById('confirmYesBtn');
+            const noBtn = document.getElementById('confirmNoBtn');
+
+            confirmMessage.textContent = message;
+            confirmModal.classList.add('show');
+
+            // Store resolve function for external close handlers
+            this.confirmResolve = resolve;
+
+            // Handle Yes button
+            const handleYes = () => {
+                this.hideConfirmModal();
+                cleanup();
+                resolve(true);
+            };
+
+            // Handle No button
+            const handleNo = () => {
+                this.hideConfirmModal();
+                cleanup();
+                resolve(false);
+            };
+
+            // Cleanup listeners
+            const cleanup = () => {
+                yesBtn.removeEventListener('click', handleYes);
+                noBtn.removeEventListener('click', handleNo);
+                this.confirmResolve = null;
+            };
+
+            yesBtn.addEventListener('click', handleYes);
+            noBtn.addEventListener('click', handleNo);
+        });
+    }
+
+    hideConfirmModal() {
+        const confirmModal = document.getElementById('confirmModal');
+        confirmModal.classList.remove('show');
     }
 
     setupEventListeners() {
@@ -562,7 +632,7 @@ class FlipFile {
 
         // If not auto-downloading, offer to download all at once
         if (!autoDownload && pendingFiles.length > 0) {
-            const downloadAll = confirm(`${pendingFiles.length} file(s) converted. Download all now?`);
+            const downloadAll = await this.showConfirm(`${pendingFiles.length} file(s) converted. Download all now?`);
             if (downloadAll) {
                 this.downloadAllConverted();
             }
