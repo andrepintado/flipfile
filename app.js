@@ -142,6 +142,7 @@ class FlipFile {
 
     handleFiles(fileList) {
         const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB limit
+        const MAX_FILES = 20; // Maximum number of files
         const validFiles = [];
         const oversizedFiles = [];
         const videoFiles = [];
@@ -166,8 +167,28 @@ class FlipFile {
             this.showModal(`Video conversion is not supported in the browser:\n\n${videoFiles.join('\n')}\n\nPlease use a desktop tool like HandBrake (handbrake.fr) for video conversion.`);
         }
 
+        // Check file count limit
+        const currentFileCount = this.files.size;
+        const availableSlots = MAX_FILES - currentFileCount;
+        const rejectedFiles = [];
+
+        if (availableSlots <= 0) {
+            this.showModal(`You have reached the maximum limit of ${MAX_FILES} files. Please convert or remove existing files before adding more.`);
+            return;
+        }
+
+        const filesToAdd = validFiles.slice(0, availableSlots);
+        if (validFiles.length > availableSlots) {
+            rejectedFiles.push(...validFiles.slice(availableSlots).map(f => f.name));
+        }
+
+        // Show modal for rejected files due to limit
+        if (rejectedFiles.length > 0) {
+            this.showModal(`You can only add ${availableSlots} more file(s) to stay within the ${MAX_FILES} file limit.\n\nThe following files were not added:\n\n${rejectedFiles.join('\n')}`);
+        }
+
         // Add valid files
-        validFiles.forEach(file => {
+        filesToAdd.forEach(file => {
             const fileId = `file-${this.fileCounter++}`;
             this.files.set(fileId, {
                 file: file,
@@ -178,7 +199,7 @@ class FlipFile {
             this.addFileToUI(fileId, file);
         });
 
-        if (validFiles.length > 0) {
+        if (filesToAdd.length > 0) {
             this.toggleView('conversion');
         }
     }
