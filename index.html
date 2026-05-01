@@ -58,15 +58,24 @@
     <!-- PDF.js for PDF reading/conversion -->
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 
-<<<<<<< claude/flipfile-converter-app-U96DJ
     <!-- heic2any for HEIC/HEIF image decoding -->
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
-=======
->>>>>>> main
-    <!-- FFmpeg.wasm for audio/video conversion (self-hosted to avoid CORS issues) -->
-    <script src="libs/ffmpeg.js"></script>
-    <script src="libs/index.js"></script>
+    <!-- lamejs for MP3 encoding (pure JavaScript, GitHub Pages compatible) -->
+    <!-- Tries self-hosted first, falls back to CDN if not available -->
+    <script>
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'libs/lame.min.js';
+            script.onerror = function() {
+                console.warn('Self-hosted lamejs not found, falling back to CDN');
+                const cdnScript = document.createElement('script');
+                cdnScript.src = 'https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/lame.all.js';
+                document.head.appendChild(cdnScript);
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
 </head>
 <body>
     <div class="container">
@@ -91,7 +100,7 @@
                     </svg>
                     <h2>Drop your files here</h2>
                     <p>or click to browse</p>
-                    <p class="supported-formats">Images • Audio • Video • Documents • PDFs</p>
+                    <p class="supported-formats">Images • Audio • Documents • PDFs</p>
                     <input type="file" id="fileInput" accept="*/*" multiple hidden>
                 </div>
             </div>
@@ -176,21 +185,10 @@
                         <h4>🎵 Audio</h4>
                         <p class="format-list">
                             <strong>Input:</strong> .mp3, .wav, .ogg, .m4a, .aac<br>
-                            <strong>Output:</strong> .mp3, .wav, .ogg, .m4a, .aac
-                        </p>
-                    </div>
-                    <div class="format-category">
-                        <h4>🎬 Video</h4>
-                        <p class="format-list">
-                            <strong>Input:</strong> .mp4, .webm, .avi<br>
-                            <strong>Output:</strong> .mp4, .webm, .avi, .gif
+                            <strong>Output:</strong> .mp3, .wav
                         </p>
                     </div>
                 </div>
-                <p class="format-note">
-                    <small>• HEIC/HEIF are iPhone photo formats (automatically supported)<br>
-                    • Audio/video conversion requires FFmpeg setup (see <a href="https://github.com/andrepintado/flipfile" target="_blank">GitHub</a>)</small>
-                </p>
             </div>
 
             <div class="contact-message">
