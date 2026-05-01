@@ -583,61 +583,83 @@ class FlipFile {
 
     // MEDIA CONVERSION (Audio/Video)
     async convertMedia(file, format) {
-        try {
-            // Load FFmpeg if not already loaded
+        // Load FFmpeg if not already loaded
+        if (!this.ffmpegLoaded) {
             await this.loadFFmpeg();
-
-            // Get file extension for input format
-            const inputExt = file.name.split('.').pop().toLowerCase();
-            const outputExt = format.toLowerCase();
-
-            // Write input file to FFmpeg virtual filesystem
-            const inputFileName = `input.${inputExt}`;
-            const outputFileName = `output.${outputExt}`;
-
-            await this.ffmpeg.writeFile(inputFileName, await this.fetchFile(file));
-
-            // Run FFmpeg conversion
-            await this.ffmpeg.exec(['-i', inputFileName, outputFileName]);
-
-            // Read output file
-            const data = await this.ffmpeg.readFile(outputFileName);
-
-            // Clean up
-            await this.ffmpeg.deleteFile(inputFileName);
-            await this.ffmpeg.deleteFile(outputFileName);
-
-            // Create blob from output data
-            const mimeTypes = {
-                'mp3': 'audio/mpeg',
-                'wav': 'audio/wav',
-                'ogg': 'audio/ogg',
-                'm4a': 'audio/mp4',
-                'aac': 'audio/aac',
-                'mp4': 'video/mp4',
-                'webm': 'video/webm',
-                'avi': 'video/x-msvideo',
-                'gif': 'image/gif'
-            };
-
-            const blob = new Blob([data.buffer], { type: mimeTypes[outputExt] || 'application/octet-stream' });
-            const filename = this.changeFileExtension(file.name, format);
-
-            return { blob, filename };
-        } catch (error) {
-            console.error('Media conversion error:', error);
-            throw error;
         }
-    }
 
-    async fetchFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                resolve(new Uint8Array(e.target.result));
-            };
-            reader.onerror = reject;
-            reader.readAsArrayBuffer(file);
+        const { fetchFile } = FFmpegUtil;
+
+        return new Promise(async (resolve, reject) => {
+            try {
+                const inputName = 'input.' + file.name.split('.').pop();
+                const outputExt = format.toLowerCase();
+                const outputName = 'output.' + outputExt;
+
+                // Write input file to FFmpeg virtual filesystem
+                await this.ffmpeg.writeFile(inputName, await fetchFile(file));
+
+                // Run FFmpeg conversion
+                // Use appropriate codec settings for each format
+                let ffmpegArgs = ['-i', inputName];
+
+                switch(format) {
+                    case 'MP3':
+                        ffmpegArgs.push('-codec:a', 'libmp3lame', '-b:a', '192k');
+                        break;
+                    case 'WAV':
+                        ffmpegArgs.push('-codec:a', 'pcm_s16le');
+                        break;
+                    case 'OGG':
+                        ffmpegArgs.push('-codec:a', 'libvorbis', '-q:a', '4');
+                        break;
+                    case 'M4A':
+                        ffmpegArgs.push('-codec:a', 'aac', '-b:a', '192k');
+                        break;
+                    case 'AAC':
+                        ffmpegArgs.push('-codec:a', 'aac', '-b:a', '192k');
+                        break;
+                    case 'MP4':
+                        ffmpegArgs.push('-codec:v', 'libx264', '-codec:a', 'aac');
+                        break;
+                    case 'WebM':
+                        ffmpegArgs.push('-codec:v', 'libvpx', '-codec:a', 'libvorbis');
+                        break;
+                    case 'GIF':
+                        // For video to GIF conversion
+                        ffmpegArgs.push('-vf', 'fps=10,scale=320:-1:flags=lanczos', '-loop', '0');
+                        break;
+                    default:
+                        ffmpegArgs.push('-codec:a', 'copy');
+                }
+
+                ffmpegArgs.push(outputName);
+
+                // Execute FFmpeg command
+                await this.ffmpeg.exec(ffmpegArgs);
+
+                // Read output file
+                const data = await this.ffmpeg.readFile(outputName);
+
+                // Create blob from output
+                const mimeType = this.getMimeType(format);
+                const blob = new Blob([data.buffer], { type: mimeType });
+                const filename = this.changeFileExtension(file.name, format);
+
+                // Clean up FFmpeg virtual filesystem
+                try {
+                    await this.ffmpeg.deleteFile(inputName);
+                    await this.ffmpeg.deleteFile(outputName);
+                } catch (cleanupError) {
+                    console.warn('FFmpeg cleanup warning:', cleanupError);
+                }
+
+                resolve({ blob, filename });
+
+            } catch (error) {
+                console.error('Media conversion error:', error);
+                reject(new Error(`Audio/video conversion failed: ${error.message}`));
+            }
         });
     }
 
