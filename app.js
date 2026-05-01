@@ -138,6 +138,15 @@ class FlipFile {
             convertDownloadBtn.classList.remove('loading');
             convertDownloadBtn.textContent = originalText;
         });
+
+        // Bulk format selector
+        const bulkFormatSelect = document.getElementById('bulkFormatSelect');
+        bulkFormatSelect.addEventListener('change', (e) => {
+            const selectedFormat = e.target.value;
+            if (selectedFormat) {
+                this.applyBulkFormat(selectedFormat);
+            }
+        });
     }
 
     handleFiles(fileList) {
@@ -201,7 +210,89 @@ class FlipFile {
 
         if (filesToAdd.length > 0) {
             this.toggleView('conversion');
+            this.updateBulkFormatSelector();
         }
+    }
+
+    updateBulkFormatSelector() {
+        const bulkFormatSelector = document.getElementById('bulkFormatSelector');
+        const bulkFormatSelect = document.getElementById('bulkFormatSelect');
+
+        if (this.files.size === 0) {
+            bulkFormatSelector.style.display = 'none';
+            return;
+        }
+
+        // Get all files and their available formats
+        const allFileFormats = [];
+        for (const [fileId, fileData] of this.files) {
+            const formats = this.getAvailableFormats(fileData.file.type, fileData.file.name);
+            allFileFormats.push(new Set(formats));
+        }
+
+        // Find common formats supported by ALL files
+        if (allFileFormats.length === 0) {
+            bulkFormatSelector.style.display = 'none';
+            return;
+        }
+
+        const commonFormats = [...allFileFormats[0]].filter(format =>
+            allFileFormats.every(formatSet => formatSet.has(format))
+        );
+
+        if (commonFormats.length === 0) {
+            bulkFormatSelector.style.display = 'none';
+            return;
+        }
+
+        // Populate the bulk format selector
+        bulkFormatSelect.innerHTML = '<option value="">Select format for all files</option>';
+        commonFormats.forEach(format => {
+            const option = document.createElement('option');
+            option.value = format;
+            option.textContent = format;
+            bulkFormatSelect.appendChild(option);
+        });
+
+        bulkFormatSelector.style.display = 'flex';
+    }
+
+    applyBulkFormat(format) {
+        for (const [fileId, fileData] of this.files) {
+            const formats = this.getAvailableFormats(fileData.file.type, fileData.file.name);
+
+            // Only apply if this file supports the format
+            if (formats.includes(format)) {
+                fileData.selectedFormat = format;
+
+                // Update the UI
+                const fileItem = document.getElementById(fileId);
+                if (fileItem) {
+                    const formatSelect = fileItem.querySelector('.format-select');
+                    const convertBtn = fileItem.querySelector('.convert-btn');
+
+                    if (formatSelect) {
+                        formatSelect.value = format;
+                    }
+
+                    if (convertBtn) {
+                        this.updateConvertButtonState(fileId, fileData.file, convertBtn);
+                    }
+
+                    // Reset completed state when format changes
+                    if (fileData.status === 'completed') {
+                        fileData.status = 'pending';
+                        fileItem.classList.remove('completed');
+                        if (convertBtn) {
+                            convertBtn.textContent = 'Convert';
+                        }
+                    }
+                }
+            }
+        }
+
+        // Reset the bulk selector
+        document.getElementById('bulkFormatSelect').value = '';
     }
 
     addFileToUI(fileId, file) {
@@ -345,6 +436,9 @@ class FlipFile {
         if (fileItem) {
             fileItem.remove();
         }
+
+        // Update bulk format selector
+        this.updateBulkFormatSelector();
 
         // If no files left, show upload area
         if (this.files.size === 0) {
